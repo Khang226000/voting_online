@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗳️ Đăng Nhập - Hệ Thống Bỏ Phiếu</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Background poster images grid (Netflix style) */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(0deg, rgba(0,0,0,0.05), rgba(0,0,0,0.05)),
+                url('/img/banner.jpg');
+            background-size: 100% 100%, cover;
+            background-position: center, center;
+            background-attachment: fixed;
+            background-color: #1a3a5c;
+            z-index: -2;
+            filter: blur(2px) brightness(1.1) saturate(1.0);
+            opacity: 1;
+        }
+
+        /* Dark overlay Netflix style */
+        body::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%);
+            z-index: -1;
+        }
+
+        /* Netflix-style header */
+        .netflix-header {
+            position: fixed;
+            top: 20px;
+            left: 30px;
+            z-index: 100;
+        }
+
+        .netflix-logo {
+            font-size: 2.5em;
+            font-weight: 900;
+            color: #e50914;
+            letter-spacing: -0.05em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .netflix-subtitle {
+            font-size: 0.8em;
+            color: #aaa;
+            letter-spacing: 0.1em;
+            margin: 0;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .netflix-header {
+                top: 15px;
+                left: 20px;
+            }
+            .netflix-logo {
+                font-size: 1.8em;
+            }
+            .netflix-subtitle {
+                font-size: 0.75em;
+            }
+        }
+
+
+
+        .login-container {
+            background: rgba(20, 20, 20, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.8),
+                0 0 1px rgba(255, 255, 255, 0.1) inset;
+            width: 100%;
+            max-width: 420px;
+            padding: 50px 40px;
+            animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .login-header .logo {
+            font-size: 4em;
+            margin-bottom: 15px;
+            animation: bounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .login-header h1 {
+            font-size: 1.8em;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .login-header p {
+            font-size: 0.95em;
+            color: #aaa;
+            margin: 0;
+            font-weight: 500;
+        }
+
+        /* Form Group */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #333;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .form-group input::placeholder {
+            color: #999;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #2a5298;
+            background: rgba(255, 255, 255, 0.95);
+            color: #000;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.2);
+        }
+
+        /* Button */
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(90deg, #e50914, #c20710);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(90deg, #c20710, #a00509);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(229, 9, 20, 0.5);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 30px 0 25px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, #444, transparent);
+        }
+
+        .divider::after {
+            background: linear-gradient(to left, #444, transparent);
+        }
+
+        .divider span {
+            padding: 0 15px;
+            color: #888;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+
+        /* MetaMask Button */
+        .metamask-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(90deg, #f6851b, #e67e22);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+        }
+
+        .metamask-btn:hover {
+            background: linear-gradient(90deg, #e67e22, #d35400);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(246, 133, 27, 0.4);
+        }
+
+        .metamask-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body {
+                padding: 20px;
+            }
+
+            .login-container {
+                padding: 35px 25px;
+                max-width: 100%;
+            }
+
+            .login-header h1 {
+                font-size: 1.5em;
+            }
+
+            .login-header .logo {
+                font-size: 3em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="netflix-header">
+    <h1 class="netflix-logo">VOTING ONLINE</h1>
+</div>
+
+<div class="login-container">
+    <div class="login-header">
+        <div class="logo">🗳️</div>
+        <h1>Bỏ Phiếu Trực Tuyến</h1>
+        <p>An toàn • Minh bạch • Blockchain</p>
+    </div>
+
+    <!-- Form Đăng Nhập -->
+    <form method="POST">
+        <div class="form-group">
+            <label for="votecode">🔑 Mã Bầu Cử</label>
+            <input type="text" id="votecode" name="votecode" placeholder="Nhập mã bầu cử..." required>
+        </div>
+        <div class="form-group">
+            <label for="username">👤 Tên Đăng Nhập</label>
+            <input type="text" id="username" name="username" placeholder="Nhập tên đăng nhập..." required>
+        </div>
+        <button type="submit" class="login-btn">🔐 Đăng Nhập</button>
+    </form>
+
+    <!-- Divider -->
+    <div class="divider">
+        <span>hoặc</span>
+    </div>
+
+    <!-- MetaMask Login -->
+    <button class="metamask-btn" onclick="connectWallet()">🦊 Đăng Nhập bằng MetaMask</button>
+</div>
+
+<!-- ethers -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+
+<script>
+async function connectWallet() {
+    if (!window.ethereum) {
+        alert("❌ Chưa cài MetaMask! Vui lòng cài đặt extension MetaMask.");
+        return;
+    }
+
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+
+        document.getElementById("walletAddress").innerText = "✅ Đã kết nối: " + address.substring(0, 6) + "..." + address.substring(38);
+
+        // message để ký
+        const message = "Login to Voting System";
+
+        // ký message
+        const signature = await signer.signMessage(message);
+
+        // gửi về server
+        const res = await fetch("/login_wallet", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                address: address,
+                signature: signature,
+                message: message
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            window.location.href = "/vote_page";
+        }
+    } catch (err) {
+        console.error("Lỗi:", err);
+        alert("❌ Lỗi kết nối ví: " + err.message);
+    }
+}
+</script>
+
+</body>
+</html>

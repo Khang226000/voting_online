@@ -243,6 +243,10 @@
                     <input type="text" name="code" placeholder="Mã bầu cử (VD: VOTE001)" required>
                     <input type="text" name="name" placeholder="Tên cuộc bầu cử" required>
                 </div>
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="allowed_wallets" style="font-size: 0.9em; color: #888;">Địa chỉ ví được phép (phân cách bằng dấu phẩy, để trống nếu cho phép tất cả)</label>
+                    <textarea id="allowed_wallets" name="allowed_wallets" rows="3" placeholder="0xabc..., 0xdef..., ..."></textarea>
+                </div>
                 <p style="margin-bottom: 5px; color: #888;">Chọn ứng viên tham gia:</p>
                 <div class="checkbox-group">
                     {% for c in candidates %}
@@ -265,6 +269,7 @@
                         <tr>
                             <th>Mã</th>
                             <th>Tên cuộc bầu cử</th>
+                            <th>Ví được phép</th>
                             <th>Ứng viên tham gia</th>
                             <th style="text-align: right;">Thao tác</th>
                         </tr>
@@ -274,6 +279,7 @@
                         <tr>
                             <td><span class="badge-code">{{ e.Code }}</span></td>
                             <td><strong>{{ e.Name }}</strong></td>
+                            <td style="font-size: 0.85em; color: #aaa; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ e['Allowed Wallets'] if e['Allowed Wallets'] else 'Tất cả' }}</td>
                             <td style="font-size: 0.85em; color: #aaa;">{{ e.Candidates }}</td>
                             <td style="text-align: right;">
                                 <a href="/admin/delete_election/{{ e.Code }}" class="btn btn-del" onclick="return confirm('Xóa cuộc bầu cử này?')">🗑️</a>

@@ -13,7 +13,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Giới hạn 16MB
 
-# Đường dẫn file CSV
+# Đường dẫn file CSV    
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_PATH = os.path.join(BASE_DIR, "database/cand_list.csv")
 ELECTION_FILE_PATH = os.path.join(BASE_DIR, "database/elections.csv")
@@ -34,7 +34,7 @@ def get_candidates():
         os.makedirs(db_dir)
 
     if not os.path.exists(FILE_PATH):
-        # Khởi tạo 10 ứng viên mặc định như yêu cầu
+        # Khởi tạo ứng viên mặc định
         data = []
         for i in range(1, 11):
             data.append({
@@ -47,22 +47,39 @@ def get_candidates():
         df.to_csv(FILE_PATH, index=False)
 
     df = pd.read_csv(FILE_PATH)
+
+    # Đảm bảo các cột cần thiết tồn tại
     for col in ["Name", "Image", "Description", "Vote Count"]:
         if col not in df.columns:
             df[col] = 0 if col == "Vote Count" else ""
+
+    # Loại bỏ các hàng không có tên ứng viên
+    df = df[df["Name"].notna() & (df["Name"].str.strip() != "")]
+
+    # Chuẩn hoá cột Image: đảm bảo đường dẫn đúng định dạng
+    def fix_image(img):
+        if pd.isna(img) or str(img).strip() == "":
+            return "nhanvat1.jpg"
+        img = str(img).strip()
+        # Đã có /img/ prefix thì giữ nguyên
+        if img.startswith("/img/"):
+            return img
+        # Có http thì giữ nguyên
+        if img.startswith("http"):
+            return img
+        return img
+    df["Image"] = df["Image"].apply(fix_image)
+
     return df
 
 def get_elections():
     if not os.path.exists(ELECTION_FILE_PATH):
-        df = pd.DataFrame(columns=["Code", "Name", "Candidates"])
-        # Tạo 1 cuộc bầu cử mẫu
-        # Khởi tạo cuộc bầu cử mặc định bao gồm đầy đủ 10 ứng viên
-        candidate_names = [f"Ứng viên {i}" for i in range(1, 11)]
-        candidates_str = ",".join(candidate_names)
-        new_row = pd.DataFrame([{"Code": "VOTE2024", "Name": "Bầu cử Đại biểu 2024", "Candidates": candidates_str}])
-        df = pd.concat([df, new_row], ignore_index=True)
+        df = pd.DataFrame(columns=["Code", "Name", "Candidates", "Allowed Wallets"])
         df.to_csv(ELECTION_FILE_PATH, index=False)
-    return pd.read_csv(ELECTION_FILE_PATH)
+    df = pd.read_csv(ELECTION_FILE_PATH)
+    if "Allowed Wallets" not in df.columns:
+        df["Allowed Wallets"] = ""
+    return df
 
 
 # =========================
@@ -88,6 +105,12 @@ def login():
         if election.empty:
             flash("❌ Mã bầu cử không hợp lệ!", "error")
             return render_template("login.html")
+
+        # Kiểm tra nếu cuộc bầu cử này yêu cầu ví (whitelist) thì không cho đăng nhập thường
+        allowed_str = str(election.iloc[0].get("Allowed Wallets", "")).strip()
+        if allowed_str and allowed_str.lower() != "nan" and allowed_str != "":
+            flash("❌ Cuộc bầu cử này giới hạn địa chỉ ví. Vui lòng đăng nhập bằng MetaMask!", "error")
+            return render_template("login.html")
         
         if not username:
             flash("❌ Vui lòng nhập tên đăng nhập!", "error")
@@ -110,30 +133,110 @@ def vote_page():
         return redirect("/")
 
     elections = get_elections()
-    current_election = elections[elections["Code"] == session.get("votecode")].iloc[0]
-    
-    # Lọc danh sách ứng viên dựa trên cuộc bầu cử
-    allowed_candidates = [c.strip() for c in str(current_election["Candidates"]).split(",")]
-    
+    votecode = session.get("votecode", "")
+    filtered_elections = elections[elections["Code"] == votecode]
+
     all_candidates = get_candidates()
-    filtered_candidates = all_candidates[all_candidates["Name"].isin(allowed_candidates)]
-    
-    return render_template("vote.html", 
-                         candidates=filtered_candidates.to_dict(orient="records"),
-                         election_name=session.get("election_name"))
+
+    if filtered_elections.empty:
+        # Không tìm thấy cuộc bầu cử → hiển thị tất cả ứng viên làm fallback
+        print(f"[WARN] Không tìm thấy election với code='{votecode}', hiển thị tất cả ứng viên.")
+        return render_template("vote.html",
+                               candidates=all_candidates.to_dict(orient="records"),
+                               election_name=session.get("election_name", "Bầu Cử"))
+
+    current_election = filtered_elections.iloc[0]
+
+    # Lọc danh sách ứng viên dựa trên cuộc bầu cử (strip whitespace)
+    allowed_candidates = [c.strip() for c in str(current_election.get("Candidates", "")).split(",") if c.strip()]
+
+    if allowed_candidates:
+        filtered_candidates = all_candidates[all_candidates["Name"].isin(allowed_candidates)]
+    else:
+        filtered_candidates = pd.DataFrame()
+
+    # Fallback: nếu không lọc được ứng viên nào → hiển thị tất cả
+    if filtered_candidates.empty:
+        print(f"[WARN] Election '{votecode}' có candidates {allowed_candidates} nhưng không khớp CSV. Hiển thị tất cả.")
+        filtered_candidates = all_candidates
+
+    return render_template("vote.html",
+                           candidates=filtered_candidates.to_dict(orient="records"),
+                           election_name=session.get("election_name", current_election["Name"]))
 
 
+# =========================
 # =========================
 # Route vote (KHÔNG gọi blockchain nữa)
 # =========================
 @app.route("/vote", methods=["POST"])
 def vote():
-    name = request.form["candidate"]
-
-    # Chỉ thông báo (vote thật xử lý bằng MetaMask JS)
+    name = request.form.get("candidate", "")
     flash(f"🟡 Đã gửi yêu cầu vote cho {name} (xác nhận trên MetaMask)", "info")
-
     return redirect("/vote_page")
+
+
+# =========================
+# API: Ghi nhận vote sau khi MetaMask confirm thành công
+# =========================
+@app.route("/api/record_vote", methods=["POST"])
+def record_vote():
+    """
+    Được gọi từ frontend sau khi giao dịch blockchain được xác nhận.
+    Cập nhật Vote Count trong CSV để trang /result hiển thị đúng.
+    """
+    if "user" not in session:
+        return jsonify({"success": False, "error": "Chưa đăng nhập."})
+
+    data = request.get_json()
+    data.pop("data", None)
+    if not data:
+        return jsonify({"success": False, "error": "Dữ liệu không hợp lệ."})
+
+    candidate_name = data.get("candidate", "").strip()
+    tx_hash        = data.get("tx_hash", "")
+    voter_address  = data.get("address", "")
+
+    # Kiểm tra quyền bầu cử dựa trên whitelist của cuộc bầu cử
+    votecode = session.get("votecode")
+    if votecode:
+        elections = get_elections()
+        election = elections[elections["Code"] == votecode]
+        if not election.empty:
+            allowed_str = str(election.iloc[0].get("Allowed Wallets", "")).strip()
+            if allowed_str and allowed_str.lower() != "nan" and allowed_str != "":
+                allowed_list = [a.strip().lower() for a in allowed_str.split(",") if a.strip()]
+                if voter_address.lower() not in allowed_list:
+                    return jsonify({"success": False, "error": "Ví của bạn không có quyền bầu cử trong cuộc này."})
+
+    if not candidate_name:
+        return jsonify({"success": False, "error": "Thiếu tên ứng viên."})
+
+    try:
+        df = get_candidates()
+
+        # Tìm ứng viên theo tên (so sánh không phân biệt hoa thường)
+        mask = df["Name"].str.strip().str.lower() == candidate_name.strip().lower()
+        if not mask.any():
+            return jsonify({"success": False, "error": f"Không tìm thấy ứng viên '{candidate_name}'."})
+
+        # Tăng Vote Count
+        df.loc[mask, "Vote Count"] = df.loc[mask, "Vote Count"].fillna(0).astype(int) + 1
+        df.to_csv(FILE_PATH, index=False)
+
+        current_votes = int(df.loc[mask, "Vote Count"].values[0])
+        print(f"[VOTE] {voter_address[:8] if voter_address else '?'}... → {candidate_name} | TX: {tx_hash[:10] if tx_hash else '?'}... | Tổng: {current_votes}")
+
+        return jsonify({
+            "success": True,
+            "candidate": candidate_name,
+            "new_vote_count": current_votes,
+            "tx_hash": tx_hash
+        })
+
+    except Exception as e:
+        print(f"[ERROR] record_vote: {e}")
+        return jsonify({"success": False, "error": str(e)})
 
 
 # =========================
@@ -142,11 +245,71 @@ def vote():
 @app.route("/result")
 def result():
     df = get_candidates()
+    all_candidates = df.to_dict(orient="records")
 
-    # Hiện dữ liệu từ CSV (tạm thời)
-    candidates = df.to_dict(orient="records")
+    # Lọc theo cuộc bầu cử nếu user đang đăng nhập
+    election_name = None
+    total_votes = 0
 
-    return render_template("result.html", candidates=candidates)
+    if "votecode" in session:
+        elections = get_elections()
+        votecode = session.get("votecode", "")
+        filtered_elections = elections[elections["Code"] == votecode]
+
+        if not filtered_elections.empty:
+            current_election = filtered_elections.iloc[0]
+            election_name = current_election["Name"]
+            allowed = [c.strip() for c in str(current_election.get("Candidates", "")).split(",") if c.strip()]
+            if allowed:
+                filtered_df = df[df["Name"].isin(allowed)]
+                if not filtered_df.empty:
+                    all_candidates = filtered_df.to_dict(orient="records")
+
+    total_votes = sum(c.get("Vote Count", 0) or 0 for c in all_candidates)
+
+    return render_template("result.html",
+                           candidates=all_candidates,
+                           election_name=election_name,
+                           total_votes=total_votes)
+
+
+# =========================
+# API: Live results (polling)
+# =========================
+@app.route('/api/live_results')
+def live_results():
+    """Trả về kết quả vote hiện tại dạng JSON để frontend tự refresh không cần reload trang."""
+    try:
+        df = get_candidates()
+        all_candidates = df.to_dict(orient="records")
+
+        # Lọc theo cuộc bầu cử nếu đang đăng nhập
+        if "votecode" in session:
+            elections = get_elections()
+            votecode = session.get("votecode", "")
+            fe = elections[elections["Code"] == votecode]
+            if not fe.empty:
+                allowed = [c.strip() for c in str(fe.iloc[0].get("Candidates", "")).split(",") if c.strip()]
+                if allowed:
+                    filtered = df[df["Name"].isin(allowed)]
+                    if not filtered.empty:
+                        all_candidates = filtered.to_dict(orient="records")
+
+        total = sum(int(c.get("Vote Count", 0) or 0) for c in all_candidates)
+
+        # Làm sạch dữ liệu trước khi trả về JSON
+        clean = []
+        for c in all_candidates:
+            clean.append({
+                "Name": str(c.get("Name", "")),
+                "Vote Count": int(c.get("Vote Count", 0) or 0),
+                "Image": str(c.get("Image", "")),
+                "Description": str(c.get("Description", "") or "")
+            })
+
+        return jsonify({"success": True, "candidates": clean, "total_votes": total})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 
 # =========================
@@ -155,36 +318,60 @@ def result():
 @app.route('/login_wallet', methods=['POST'])
 def login_wallet():
     data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "error": "Dữ liệu không hợp lệ."})
 
-    address = data.get("address")
-    signature = data.get("signature")
-    message = data.get("message")
-    votecode = data.get("votecode", "").strip()
+    address = data.get("address", "").strip()
+    signature = data.get("signature", "")
+    message = data.get("message", "")
+    votecode = str(data.get("votecode", "")).strip()
+
+    if not address or not signature or not message:
+        return jsonify({"success": False, "error": "Thiếu thông tin xác thực."})
+
+    elections = get_elections()
+
+    if votecode:
+        # Người dùng chỉ định code cụ thể
+        election = elections[elections["Code"] == votecode]
+        if election.empty:
+            return jsonify({"success": False, "error": f"Mã bầu cử '{votecode}' không tồn tại."})
+    else:
+        # Không nhập votecode → dùng cuộc bầu cử đầu tiên có sẵn
+        if elections.empty:
+            # Không có cuộc bầu cử → vẫn đăng nhập được, hiển thị tất cả ứng viên
+            election = pd.DataFrame([{"Code": "", "Name": "Bầu Cử", "Candidates": ""}])
+            votecode = ""
+        else:
+            election = elections.iloc[[0]]
+            votecode = election.iloc[0]["Code"]
 
     try:
-        # Xác minh chữ ký
+        # Xác minh chữ ký MetaMask
         msg = encode_defunct(text=message)
         recovered_address = Account.recover_message(msg, signature=signature)
 
-        # Kiểm tra xem địa chỉ khôi phục có khớp với địa chỉ gửi không
         if recovered_address.lower() == address.lower():
-            # Kiểm tra mã bầu cử
-            elections = get_elections()
-            election = elections[elections["Code"] == votecode]
+            # KIỂM TRA WHITELIST (Địa chỉ ví được phép)
+            current_election = election.iloc[0]
+            allowed_str = str(current_election.get("Allowed Wallets", "")).strip()
             
-            if election.empty:
-                return jsonify({"success": False, "error": "Mã bầu cử không hợp lệ!"})
+            if allowed_str and allowed_str.lower() != "nan" and allowed_str != "":
+                allowed_list = [a.strip().lower() for a in allowed_str.split(",") if a.strip()]
+                if address.lower() not in allowed_list:
+                    return jsonify({"success": False, "error": "Địa chỉ ví này không được cấp phép tham gia cuộc bầu cử này."})
 
             session["user"] = address
             session["votecode"] = votecode
             session["election_name"] = election.iloc[0]["Name"]
+            print(f"[OK] MetaMask login: {address[:8]}... → Election: {votecode}")
             return jsonify({"success": True})
         else:
-            return jsonify({"success": False, "error": "Chữ ký không hợp lệ"})
+            return jsonify({"success": False, "error": "Chữ ký MetaMask không hợp lệ."})
 
     except Exception as e:
-        print("Lỗi verify:", e)
-        return jsonify({"success": False, "error": str(e)})
+        print("[ERROR] login_wallet:", e)
+        return jsonify({"success": False, "error": "Lỗi xác minh chữ ký: " + str(e)})
 
 
 # =========================
@@ -250,13 +437,19 @@ def add_election():
     code = request.form.get("code", "").strip()
     name = request.form.get("name", "").strip()
     selected_candidates = request.form.getlist("selected_candidates")
+    allowed_wallets = request.form.get("allowed_wallets", "").strip()
 
     if code and name and selected_candidates:
         df = get_elections()
         if code in df["Code"].values:
             flash("❌ Mã bầu cử này đã tồn tại!", "error")
         else:
-            new_row = pd.DataFrame([{"Code": code, "Name": name, "Candidates": ",".join(selected_candidates)}])
+            new_row = pd.DataFrame([{
+                "Code": code, 
+                "Name": name, 
+                "Candidates": ",".join(selected_candidates),
+                "Allowed Wallets": allowed_wallets
+            }])
             df = pd.concat([df, new_row], ignore_index=True)
             df.to_csv(ELECTION_FILE_PATH, index=False)
             flash(f"✅ Đã tạo cuộc bầu cử: {name}", "success")

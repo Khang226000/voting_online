@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Admin Dashboard | Voting System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        :root {
+            --primary-color: #e50914;
+            --bg-color: #0f0f0f;
+            --card-bg: rgba(30, 30, 30, 0.6);
+            --text-color: #ffffff;
+            --accent-color: #00d4ff;
+        }
+        
+        body { 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif; 
+            margin: 0;
+            padding: 20px;
+            background-image: radial-gradient(circle at 50% -20%, #2a0a0a, #0f0f0f);
+            min-height: 100vh;
+        }
+
+        .container { 
+            max-width: 1100px; 
+            margin: 40px auto; 
+            background: var(--card-bg); 
+            padding: 40px; 
+            border-radius: 20px; 
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+
+        .header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 20px;
+        }
+
+        h1 { font-size: 2em; margin: 0; color: var(--primary-color); letter-spacing: -1px; }
+        h2 { font-size: 1.4em; color: #eee; margin-top: 0; }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+        .stat-card span { display: block; color: #888; font-size: 0.9em; text-transform: uppercase; }
+        .stat-card strong { font-size: 2em; color: var(--accent-color); }
+
+        .section { 
+            background: rgba(0,0,0,0.2);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        /* Table Styling */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0 10px; margin-top: 10px; }
+        th { text-align: left; padding: 15px; color: #888; font-weight: 500; font-size: 0.9em; text-transform: uppercase; }
+        td { padding: 15px; background: rgba(255,255,255,0.03); }
+        td:first-child { border-radius: 10px 0 0 10px; }
+        td:last-child { border-radius: 0 10px 10px 0; }
+
+        .candidate-img {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+
+        /* Buttons */
+        .btn { 
+            padding: 10px 20px; 
+            border-radius: 8px; 
+            text-decoration: none; 
+            cursor: pointer; 
+            border: none; 
+            font-size: 0.9em; 
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-add { background: var(--primary-color); color: white; padding: 6px 12px; font-size: 0.8em; height: 38px; align-self: flex-end; }
+        .btn-add:hover { background: #ff0f1a; transform: translateY(-2px); }
+        
+        .btn-del { background: rgba(220, 53, 69, 0.1); color: #dc3545; border: 1px solid rgba(220, 53, 69, 0.2); }
+        .btn-del:hover { background: #dc3545; color: white; }
+
+        .btn-reset { background: rgba(255, 193, 7, 0.1); color: #ffc107; border: 1px solid rgba(255, 193, 7, 0.2); }
+        .btn-reset:hover { background: #ffc107; color: black; }
+
+        .btn-logout { background: rgba(255,255,255,0.1); color: #ccc; }
+        .btn-logout:hover { background: #fff; color: #000; }
+
+        /* Inputs */
+        .form-inline { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; align-items: flex-start; }
+        .input-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 200px; }
+        .input-group label { font-size: 0.8em; color: #888; margin-left: 5px; }
+        input[type="text"], textarea, input[type="file"], select { 
+            padding: 12px 15px; 
+            background: #252525; 
+            border: 1px solid #333; 
+            border-radius: 8px; 
+            color: white;
+            font-family: inherit;
+        }
+        input:focus, textarea:focus { outline: none; border-color: var(--primary-color); }
+        textarea { resize: vertical; min-height: 42px; }
+
+        .badge-code {
+            background: #333;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: var(--accent-color);
+            margin-right: 10px;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            background: #252525;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .checkbox-item { 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            gap: 8px; 
+            font-size: 0.85em; 
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: 0.3s;
+        }
+        .checkbox-item:hover { border-color: var(--primary-color); background: rgba(255,255,255,0.1); }
+        .checkbox-item input { margin: 0; }
+        .mini-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-flex">
+            <h1>⚙️ Admin Dashboard</h1>
+            <a href="/admin/logout" class="btn btn-logout">🚪 Đăng xuất</a>
+        </div>
+
+        <!-- Thống kê nhanh -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span>Ứng viên</span>
+                <strong>{{ candidates|length }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Tổng phiếu bầu</span>
+                {% set total_votes = candidates|sum(attribute='Vote Count') %}
+                <strong>{{ total_votes }}</strong>
+            </div>
+            <div class="stat-card">
+                <span>Mã hoạt động</span>
+                <strong>{{ elections|length }}</strong>
+            </div>
+        </div>
+
+        <!-- Quản lý ứng viên -->
+        <div class="section">
+            <h2>👥 Quản lý ứng viên</h2>
+            <form action="/admin/add_candidate" method="POST" class="form-inline">
+                <input type="text" name="name" placeholder="Tên ứng viên" required>
+                <select name="image" required>
+                    <option value="" disabled selected>Chọn ảnh từ /img</option>
+                    {% for img in image_files %}
+                    <option value="{{ img }}">{{ img }}</option>
+                    {% endfor %}
+                </select>
+                <input type="text" name="description" placeholder="Mô tả ngắn">
+                <button type="submit" class="btn btn-add">➕ Thêm ứng viên</button>
+            </form>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ảnh</th>
+                            <th>Tên ứng viên</th>
+                            <th>Số phiếu</th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in candidates %}
+                        <tr>
+                            <td>
+                                {# Tự động xử lý đường dẫn ảnh từ folder /img #}
+                                {% set img_src = c.Image if c.Image.startswith('/img/') else '/img/' + c.Image %}
+                                <img src="{{ img_src }}" class="candidate-img" onerror="this.src='https://via.placeholder.com/150'">
+                            </td>
+                            <td><strong>{{ c.Name }}</strong></td>
+                            <td><span style="color: var(--accent-color); font-weight: bold;">{{ c['Vote Count'] }}</span></td>
+                            <td style="text-align: right;">
+                                <a href="/admin/delete_candidate/{{ c.Name }}" class="btn btn-del" onclick="return confirm('Xóa ứng viên này?')">🗑️ Xóa</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Quản lý cuộc bầu cử -->
+        <div class="section">
+            <h2>🗳️ Tạo cuộc bầu cử mới</h2>
+            <form action="/admin/add_election" method="POST">
+                <div class="form-inline">
+                    <input type="text" name="code" placeholder="Mã bầu cử (VD: VOTE001)" required>
+                    <input type="text" name="name" placeholder="Tên cuộc bầu cử" required>
+                </div>
+                <p style="margin-bottom: 5px; color: #888;">Chọn ứng viên tham gia:</p>
+                <div class="checkbox-group">
+                    {% for c in candidates %}
+                    <label class="checkbox-item">
+                        {% set img_src = c.Image if c.Image.startswith('/img/') else '/img/' + c.Image %}
+                        <img src="{{ img_src }}" class="mini-img" onerror="this.src='https://via.placeholder.com/50'">
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" name="selected_candidates" value="{{ c.Name }}"> <span>{{ c.Name }}</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn btn-add" style="margin-top: 15px;">🚀 Tạo cuộc bầu cử</button>
+            </form>
+
+            <h2 style="margin-top: 40px;">🔑 Danh sách cuộc bầu cử</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã</th>
+                            <th>Tên cuộc bầu cử</th>
+                            <th>Ứng viên tham gia</th>
+                            <th style="text-align: right;">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in elections %}
+                        <tr>
+                            <td><span class="badge-code">{{ e.Code }}</span></td>
+                            <td><strong>{{ e.Name }}</strong></td>
+                            <td style="font-size: 0.85em; color: #aaa;">{{ e.Candidates }}</td>
+                            <td style="text-align: right;">
+                                <a href="/admin/delete_election/{{ e.Code }}" class="btn btn-del" onclick="return confirm('Xóa cuộc bầu cử này?')">🗑️</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Chức năng hệ thống -->
+        <div class="section">
+            <h2>🛠️ Chức năng hệ thống</h2>
+            <p style="color: #888; font-size: 0.9em;">Lưu ý: Hành động này sẽ đưa tất cả số phiếu hiện tại về 0. Không thể hoàn tác.</p>
+            <a href="/admin/reset" class="btn btn-reset" onclick="return confirm('Bạn có chắc chắn muốn reset toàn bộ số phiếu?')">🔄 Reset số phiếu</a>
+        </div>
+    </div>
+
+    <!-- Giải quyết lỗi 'Problems' bằng cách đưa logic Flash ra ngoài thẻ script -->
+    <div id="flash-container" style="display: none;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <span class="flash-msg" data-message="{{ message }}"></span>
+            {% endfor %}
+        {% endwith %}
+    </div>
+
+    <script>
+        // Đọc thông báo từ container ẩn và hiển thị alert
+        document.querySelectorAll('.flash-msg').forEach(el => {
+            alert(el.getAttribute('data-message'));
+        });
+    </script>
+</body>
+</html>

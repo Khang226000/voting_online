@@ -159,6 +159,7 @@ def login_wallet():
     address = data.get("address")
     signature = data.get("signature")
     message = data.get("message")
+    votecode = data.get("votecode", "").strip()
 
     try:
         # Xác minh chữ ký
@@ -167,7 +168,16 @@ def login_wallet():
 
         # Kiểm tra xem địa chỉ khôi phục có khớp với địa chỉ gửi không
         if recovered_address.lower() == address.lower():
+            # Kiểm tra mã bầu cử
+            elections = get_elections()
+            election = elections[elections["Code"] == votecode]
+            
+            if election.empty:
+                return jsonify({"success": False, "error": "Mã bầu cử không hợp lệ!"})
+
             session["user"] = address
+            session["votecode"] = votecode
+            session["election_name"] = election.iloc[0]["Name"]
             return jsonify({"success": True})
         else:
             return jsonify({"success": False, "error": "Chữ ký không hợp lệ"})

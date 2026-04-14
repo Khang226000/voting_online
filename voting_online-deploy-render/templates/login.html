@@ -348,6 +348,12 @@
 
 <script>
 async function connectWallet() {
+    const votecode = document.getElementById("votecode").value.trim();
+    if (!votecode) {
+        alert("❌ Vui lòng nhập mã bầu cử trước khi kết nối ví!");
+        return;
+    }
+
     if (!window.ethereum) {
         alert("❌ Chưa cài MetaMask! Vui lòng cài đặt extension MetaMask.");
         return;
@@ -376,7 +382,8 @@ async function connectWallet() {
             body: JSON.stringify({
                 address: address,
                 signature: signature,
-                message: message
+                message: message,
+                votecode: votecode
             })
         });
 

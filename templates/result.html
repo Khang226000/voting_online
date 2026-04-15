@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Kết Quả Bầu Cử - Voting Online</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            background: #050a14;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 20% 10%, rgba(229,9,20,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 90%, rgba(0,100,255,0.06) 0%, transparent 60%),
+                url('/img/banner3.jpg') center/cover no-repeat;
+            z-index: -2;
+            filter: blur(3px) brightness(0.3);
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: rgba(5,10,20,0.75);
+            z-index: -1;
+        }
+
+        /* ─── HEADER ─── */
+        .top-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            background: rgba(5,10,20,0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+            z-index: 200;
+        }
+
+        .logo {
+            font-size: 1.6em;
+            font-weight: 900;
+            color: #e50914;
+            letter-spacing: -0.04em;
+        }
+
+        .top-bar-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            background: rgba(229,9,20,0.15);
+            border: 1px solid rgba(229,9,20,0.4);
+            border-radius: 20px;
+            font-size: 0.78em;
+            font-weight: 700;
+            color: #ff4d4d;
+            letter-spacing: 0.05em;
+        }
+
+        .live-dot {
+            width: 7px; height: 7px;
+            background: #e50914;
+            border-radius: 50%;
+            animation: blink 1.2s ease-in-out infinite;
+        }
+
+        @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+        .nav-btn {
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.07);
+            color: #ccc;
+        }
+
+        .nav-btn:hover { background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.3); }
+        .nav-btn.primary { background: linear-gradient(90deg,#e50914,#c20710); border-color: transparent; color: #fff; }
+        .nav-btn.primary:hover { background: linear-gradient(90deg,#c20710,#a00509); box-shadow: 0 6px 18px rgba(229,9,20,0.4); }
+
+        /* ─── MAIN CONTENT ─── */
+        .main {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 90px 20px 60px;
+        }
+
+        /* ─── PAGE TITLE ─── */
+        .page-title {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-title h1 {
+            font-size: 2.6em;
+            font-weight: 900;
+            background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .page-title .election-name {
+            font-size: 1.05em;
+            color: #888;
+            font-weight: 500;
+        }
+
+        .page-title .election-name span {
+            color: #e50914;
+            font-weight: 700;
+        }
+
+        /* ─── SUMMARY STATS ─── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 22px 20px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            transition: transform 0.25s;
+        }
+
+        .stat-card:hover { transform: translateY(-3px); }
+
+        .stat-icon { font-size: 1.8em; margin-bottom: 8px; }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .stat-label { font-size: 0.8em; color: #888; font-weight: 500; letter-spacing: 0.03em; }
+
+        /* ─── WINNER BANNER ─── */
+        .winner-banner {
+            background: linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(255,165,0,0.05) 100%);
+            border: 1px solid rgba(255,215,0,0.25);
+            border-radius: 16px;
+            padding: 28px 30px;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            backdrop-filter: blur(10px);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%,100% { box-shadow: 0 0 20px rgba(255,215,0,0.1); }
+            50%      { box-shadow: 0 0 40px rgba(255,215,0,0.2); }
+        }
+
+        .winner-img {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid gold;
+            flex-shrink: 0;
+        }
+
+        .winner-info { flex: 1; }
+
+        .winner-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,215,0,0.15);
+            border: 1px solid rgba(255,215,0,0.4);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.75em;
+            font-weight: 700;
+            color: gold;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+
+        .winner-name {
+            font-size: 1.5em;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .winner-desc { font-size: 0.88em; color: #aaa; }
+
+        .winner-votes {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .winner-votes .big-num {
+            font-size: 3em;
+            font-weight: 900;
+            color: gold;
+            line-height: 1;
+        }
+
+        .winner-votes .big-label { font-size: 0.8em; color: #888; margin-top: 4px; }
+
+        /* ─── RESULTS TABLE / CARDS ─── */
+        .results-section h2 {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #ccc;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .results-list { display: flex; flex-direction: column; gap: 14px; }
+
+        .result-row {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 18px 22px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-row::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px 0 0 4px;
+        }
+
+        .result-row.rank-1::before { background: gold; }
+        .result-row.rank-2::before { background: silver; }
+        .result-row.rank-3::before { background: #cd7f32; }
+
+        .result-row:hover {
+            background: rgba(255,255,255,0.07);
+            border-color: rgba(255,255,255,0.15);
+            transform: translateX(4px);
+        }
+
+        .result-row.rank-1 {
+            border-color: rgba(255,215,0,0.2);
+            background: rgba(255,215,0,0.04);
+        }
+
+        .rank-num {
+            font-size: 1.2em;
+            font-weight: 900;
+            color: #666;
+            width: 30px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .rank-1 .rank-num { color: gold; }
+        .rank-2 .rank-num { color: silver; }
+        .rank-3 .rank-num { color: #cd7f32; }
+
+        .cand-thumb {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.1);
+            flex-shrink: 0;
+        }
+
+        .rank-1 .cand-thumb { border-color: gold; }
+
+        .cand-info { flex: 1; min-width: 0; }
+
+        .cand-name {
+            font-size: 1.05em;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cand-desc {
+            font-size: 0.8em;
+            color: #777;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Progress bar area */
+        .progress-area { flex: 2; min-width: 120px; }
+
+        .progress-track {
+            background: rgba(255,255,255,0.07);
+            border-radius: 8px;
+            height: 10px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #e50914, #c20710);
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0;
+        }
+
+        .rank-1 .progress-fill { background: linear-gradient(90deg, gold, #f59e0b); }
+        .rank-2 .progress-fill { background: linear-gradient(90deg, silver, #94a3b8); }
+        .rank-3 .progress-fill { background: linear-gradient(90deg, #cd7f32, #b45309); }
+
+        .progress-pct {
+            font-size: 0.78em;
+            color: #888;
+            font-weight: 600;
+        }
+
+        /* Vote count badge */
+        .vote-badge {
+            text-align: right;
+            flex-shrink: 0;
+            min-width: 70px;
+        }
+
+        .vote-num {
+            font-size: 1.7em;
+            font-weight: 900;
+            color: #fff;
+            line-height: 1;
+        }
+
+        .rank-1 .vote-num { color: gold; }
+
+        .vote-unit { font-size: 0.72em; color: #666; margin-top: 2px; }
+
+        /* ─── AUTO REFRESH INDICATOR ─── */
+        .refresh-bar {
+            text-align: center;
+            margin-top: 40px;
+            padding: 16px;
+            color: #555;
+            font-size: 0.82em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .refresh-prog {
+            width: 140px;
+            height: 3px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .refresh-fill {
+            height: 100%;
+            background: #e50914;
+            border-radius: 3px;
+            animation: refill 30s linear infinite;
+        }
+
+        @keyframes refill { from { width: 0; } to { width: 100%; } }
+
+        /* ─── EMPTY STATE ─── */
+        .empty-state {
+            text-align: center;
+            padding: 80px 20px;
+            color: #555;
+        }
+
+        .empty-state .icon { font-size: 3.5em; margin-bottom: 16px; }
+        .empty-state h2 { color: #888; font-size: 1.3em; margin-bottom: 8px; }
+        .empty-state p { font-size: 0.9em; }
+
+        /* ─── FOOTER ─── */
+        .result-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 50px;
+            flex-wrap: wrap;
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 768px) {
+            .top-bar { padding: 0 15px; }
+            .logo { font-size: 1.3em; }
+            .main { padding: 80px 14px 40px; }
+            .page-title h1 { font-size: 1.8em; }
+            .winner-banner { flex-direction: column; text-align: center; gap: 14px; }
+            .winner-votes { text-align: center; }
+            .result-row { flex-wrap: wrap; gap: 12px; }
+            .progress-area { width: 100%; order: 4; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .live-badge { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .stats-row { grid-template-columns: 1fr 1fr; }
+            .result-row { padding: 14px 16px; }
+            .cand-thumb { width: 44px; height: 44px; }
+            .vote-num { font-size: 1.4em; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+    <div class="logo">VOTING ONLINE</div>
+    <div class="top-bar-actions">
+        <div class="live-badge">
+            <span class="live-dot"></span>
+            LIVE
+        </div>
+        {% if session.get('user') %}
+        <a href="/vote_page" class="nav-btn">🗳️ Bỏ Phiếu</a>
+        {% endif %}
+        <a href="/" class="nav-btn">🚪 Đăng Xuất</a>
+    </div>
+</div>
+
+<div class="main">
+
+    <!-- Page Title -->
+    <div class="page-title">
+        <h1>📊 Kết Quả Bầu Cử</h1>
+        <p class="election-name">
+            {% if election_name %}
+                Cuộc bầu cử: <span>{{ election_name }}</span>
+            {% else %}
+                Hiển thị tổng hợp toàn bộ ứng viên
+            {% endif %}
+            &nbsp;·&nbsp; Cập nhật sau mỗi lần vote xác nhận
+        </p>
+    </div>
+
+    {% set total = total_votes | default(0) | int %}
+    {% set cand_count = candidates | length %}
+
+    {% if candidates %}
+        <!-- Summary stats -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon">🗳️</div>
+                <div class="stat-value" id="totalVotes">{{ total }}</div>
+                <div class="stat-label">Tổng phiếu bầu</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-value">{{ cand_count }}</div>
+                <div class="stat-label">Ứng viên</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏆</div>
+                {% set sorted_cands = candidates | sort(attribute='Vote Count', reverse=True) %}
+                <div class="stat-value" style="font-size:1.2em; color:#ffd700;">
+                    {{ sorted_cands[0]['Name'] if sorted_cands else '—' }}
+                </div>
+                <div class="stat-label">Đang dẫn đầu</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏱️</div>
+                <div class="stat-value" id="lastUpdate" style="font-size:0.9em;">—</div>
+                <div class="stat-label">Cập nhật lúc</div>
+            </div>
+        </div>
+
+        <!-- Winner banner (chỉ hiện khi có ít nhất 1 phiếu) -->
+        {% set max_votes = candidates | map(attribute='Vote Count') | map('int') | max %}
+        {% if max_votes > 0 %}
+            {% set ns = namespace(shown=false) %}
+            {% for c in candidates %}
+                {% if c['Vote Count'] | int == max_votes and not ns.shown %}
+                {% set ns.shown = true %}
+                {% set img_w = c.Image if (c.Image and c.Image != 'nan' and (c.Image.startswith('/img/') or c.Image.startswith('http'))) else '/img/' + (c.Image if (c.Image and c.Image != 'nan') else 'nhanvat1.jpg') %}
+                <div class="winner-banner">
+                    <img src="{{ img_w }}" alt="{{ c.Name }}" class="winner-img" onerror="loadPlaceholder(this)">
+                    <div class="winner-info">
+                        <div class="winner-badge">🥇 &nbsp;ĐANG DẪN ĐẦU</div>
+                        <div class="winner-name">{{ c.Name }}</div>
+                        <div class="winner-desc">
+                            {{ c.Description if c.Description and c.Description != 'nan' else 'Ứng viên xuất sắc' }}
+                        </div>
+                    </div>
+                    <div class="winner-votes">
+                        <div class="big-num">{{ c['Vote Count'] | int }}</div>
+                        <div class="big-label">phiếu bầu</div>
+                        {% if total > 0 %}
+                        <div class="big-label" style="color:#ffd700; margin-top:4px;">
+                            {{ (c['Vote Count'] | int / total * 100) | round(1) }}% tổng số phiếu
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
+        <!-- Kết quả từng ứng viên (sắp xếp theo số phiếu) -->
+        <div class="results-section">
+            <h2>📋 Bảng Xếp Hạng Chi Tiết</h2>
+            <div class="results-list" id="resultsList">
+                {% set sorted_list = candidates | sort(attribute='Vote Count', reverse=True) %}
+                {% for c in sorted_list %}
+                    {% set rank = loop.index %}
+                    {% set votes = c['Vote Count'] | int %}
+                    {% set pct = (votes / total * 100) | round(1) if total > 0 else 0 %}
+                    {% if c.Image and c.Image != 'nan' %}
+                        {% set img_src = c.Image if (c.Image.startswith('/img/') or c.Image.startswith('http')) else '/img/' + c.Image %}
+                    {% else %}
+                        {% set img_src = '/img/nhanvat1.jpg' %}
+                    {% endif %}
+
+                    <div class="result-row rank-{{ rank if rank <= 3 else 'other' }}"
+                         data-votes="{{ votes }}" data-pct="{{ pct }}">
+
+                        <div class="rank-num">
+                            {% if rank == 1 %}🥇{% elif rank == 2 %}🥈{% elif rank == 3 %}🥉{% else %}{{ rank }}{% endif %}
+                        </div>
+
+                        <img src="{{ img_src }}" alt="{{ c.Name }}" class="cand-thumb" onerror="loadPlaceholder(this)">
+
+                        <div class="cand-info">
+                            <div class="cand-name">{{ c.Name }}</div>
+                            <div class="cand-desc">
+                                {{ c.Description if c.Description and c.Description != 'nan' else 'Ứng viên' }}
+                            </div>
+                        </div>
+
+                        <div class="progress-area">
+                            <div class="progress-track">
+                                <div class="progress-fill" data-width="{{ pct }}"></div>
+                            </div>
+                            <div class="progress-pct">{{ pct }}% ({{ votes }} / {{ total }} phiếu)</div>
+                        </div>
+
+                        <div class="vote-badge">
+                            <div class="vote-num">{{ votes }}</div>
+                            <div class="vote-unit">phiếu</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Auto refresh indicator -->
+        <div class="refresh-bar">
+            <span>Tự làm mới sau 30 giây</span>
+            <div class="refresh-prog"><div class="refresh-fill"></div></div>
+            <a href="/result" style="color:#666; text-decoration:underline; font-size:0.9em;">Làm mới ngay</a>
+        </div>
+
+    {% else %}
+        <!-- Empty state -->
+        <div class="empty-state">
+            <div class="icon">🗳️</div>
+            <h2>Chưa có phiếu bầu nào</h2>
+            <p>Kết quả sẽ xuất hiện khi có phiếu bầu được xác nhận trên Blockchain.</p>
+        </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="result-footer">
+        {% if session.get('user') %}
+        <a href="/vote_page" class="nav-btn primary">⬅️ Quay Lại Bỏ Phiếu</a>
+        {% endif %}
+        <a href="/" class="nav-btn">🏠 Trang Chủ</a>
+    </div>
+
+</div>
+
+<script>
+// ─── Animate progress bars on load ───
+document.addEventListener('DOMContentLoaded', () => {
+    // Set last update time
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent =
+        now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    // Animate all progress bars
+    setTimeout(() => {
+        document.querySelectorAll('.progress-fill[data-width]').forEach(el => {
+            el.style.width = el.getAttribute('data-width') + '%';
+        });
+    }, 200);
+});
+
+// ─── Placeholder image fallback ───
+function loadPlaceholder(img) {
+    img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'%3E%3Crect fill='%23222' width='120' height='120' rx='60'/%3E%3Ccircle cx='60' cy='48' r='22' fill='%23444'/%3E%3Cpath d='M 20 110 Q 20 82 60 82 Q 100 82 100 110 Z' fill='%23444'/%3E%3C/svg%3E";
+}
+
+// ─── Auto refresh every 30 seconds ───
+setTimeout(() => {
+    window.location.reload();
+}, 30000);
+
+// ─── Live vote count update via API ───
+async function fetchLiveResults() {
+    try {
+        const res = await fetch('/api/live_results', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && data.candidates) {
+            updateResultsUI(data.candidates, data.total_votes);
+        }
+    } catch(e) {
+        // Silent fail
+    }
+}
+
+function updateResultsUI(candidates, total) {
+    document.getElementById('totalVotes').textContent = total;
+    const now = new Date();
+    document.getElementById('lastUpdate').textContent =
+        now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// Poll live results every 10 seconds (nếu có API)
+setInterval(fetchLiveResults, 10000);
+</script>
+
+</body>
+</html>

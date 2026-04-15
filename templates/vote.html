@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗳️ Bỏ Phiếu</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            background: #000;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(0deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.05)),
+                url('/img/banner2.jpg');
+            background-size: 100% 100%, cover;
+            background-position: center, center;
+            background-attachment: fixed;
+            background-color: #1a3a5c;
+            z-index: -2;
+            filter: blur(2px) brightness(1.1) saturate(1.0);
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.5) 100%);
+            z-index: -1;
+        }
+
+        /* Header */
+        .netflix-header {
+            position: fixed;
+            top: 20px;
+            left: 30px;
+            z-index: 100;
+        }
+
+        .netflix-logo {
+            font-size: 2.5em;
+            font-weight: 900;
+            color: #e50914;
+            letter-spacing: -0.05em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            margin: 0;
+        }
+
+        /* Top-right wallet info + logout */
+        .top-right-bar {
+            position: fixed;
+            top: 18px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .wallet-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            background: rgba(246, 133, 27, 0.15);
+            border: 1px solid rgba(246, 133, 27, 0.4);
+            border-radius: 20px;
+            color: #f6a55b;
+            font-size: 0.83em;
+            font-weight: 600;
+            backdrop-filter: blur(8px);
+        }
+
+        .wallet-dot {
+            width: 7px;
+            height: 7px;
+            background: #4ddb8f;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 6px #4ddb8f;
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        .logout-btn {
+            padding: 9px 18px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            backdrop-filter: blur(8px);
+        }
+
+        .logout-btn:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* Main container */
+        .vote-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            padding-top: 110px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .vote-header {
+            text-align: center;
+            margin-bottom: 50px;
+            color: #fff;
+        }
+
+        .vote-header h1 {
+            font-size: 2.5em;
+            margin: 0 0 10px 0;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+        }
+
+        .vote-header p {
+            font-size: 1.05em;
+            color: #ccc;
+            margin: 0;
+        }
+
+        /* Network warning banner */
+        #networkBanner {
+            display: none;
+            max-width: 700px;
+            margin: 0 auto 30px auto;
+            padding: 14px 20px;
+            background: rgba(255, 165, 0, 0.12);
+            border: 1px solid rgba(255, 165, 0, 0.4);
+            border-radius: 10px;
+            color: #ffc166;
+            font-size: 0.92em;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        /* MetaMask connect notice (nếu chưa kết nối) */
+        #walletNotice {
+            display: none;
+            max-width: 500px;
+            margin: 0 auto 30px auto;
+            padding: 16px 20px;
+            background: rgba(246, 133, 27, 0.1);
+            border: 1px solid rgba(246, 133, 27, 0.35);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #walletNotice p {
+            color: #f6a55b;
+            margin: 0 0 12px 0;
+            font-size: 0.92em;
+        }
+
+        .connect-wallet-btn {
+            padding: 10px 22px;
+            background: linear-gradient(90deg, #f6851b, #e67e22);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .connect-wallet-btn:hover {
+            background: linear-gradient(90deg, #e67e22, #d35400);
+            transform: translateY(-1px);
+        }
+
+        /* Candidates Grid */
+        .candidates-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .candidate-card {
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+        }
+
+        .candidate-card:hover {
+            transform: translateY(-8px);
+            border-color: rgba(229, 9, 20, 0.5);
+            box-shadow: 0 15px 50px rgba(229, 9, 20, 0.3);
+        }
+
+        .candidate-image {
+            width: 100%;
+            height: 280px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .candidate-info {
+            padding: 20px;
+            text-align: center;
+        }
+
+        .candidate-name {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .candidate-desc {
+            font-size: 0.875em;
+            color: #bbb;
+            margin-bottom: 15px;
+            line-height: 1.5;
+            min-height: 40px;
+        }
+
+        /* Vote Button */
+        .vote-button {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(90deg, #e50914, #c20710);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .vote-button:hover:not(:disabled) {
+            background: linear-gradient(90deg, #c20710, #a00509);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(229, 9, 20, 0.4);
+        }
+
+        .vote-button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .vote-button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .vote-button .btn-spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(30px);
+            padding: 14px 24px;
+            border-radius: 10px;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: white;
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            max-width: 90vw;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #toast.success {
+            background: rgba(0, 180, 90, 0.95);
+            box-shadow: 0 8px 30px rgba(0, 180, 90, 0.4);
+        }
+
+        #toast.error {
+            background: rgba(220, 30, 40, 0.95);
+            box-shadow: 0 8px 30px rgba(220, 30, 40, 0.4);
+        }
+
+        #toast.info {
+            background: rgba(30, 130, 220, 0.95);
+            box-shadow: 0 8px 30px rgba(30, 130, 220, 0.4);
+        }
+
+        #toast.warning {
+            background: rgba(200, 120, 10, 0.95);
+            box-shadow: 0 8px 30px rgba(200, 120, 10, 0.4);
+        }
+
+        /* Overlay loading */
+        #txOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 8888;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            backdrop-filter: blur(4px);
+        }
+
+        #txOverlay.show {
+            display: flex;
+        }
+
+        .tx-spinner {
+            width: 52px;
+            height: 52px;
+            border: 4px solid rgba(255, 255, 255, 0.15);
+            border-top-color: #e50914;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+        }
+
+        #txOverlayText {
+            color: #fff;
+            font-size: 1.1em;
+            font-weight: 600;
+            text-align: center;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        .vote-footer {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .secondary-btn {
+            padding: 14px 36px;
+            background: linear-gradient(90deg, #00d4ff, #0099ff);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .secondary-btn:hover {
+            background: linear-gradient(90deg, #0099ff, #0077e6);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 153, 255, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .vote-container {
+                padding: 30px 15px;
+                padding-top: 90px;
+            }
+
+            .vote-header h1 {
+                font-size: 1.8em;
+            }
+
+            .netflix-header {
+                top: 15px;
+                left: 15px;
+            }
+
+            .netflix-logo {
+                font-size: 1.8em;
+            }
+
+            .top-right-bar {
+                top: 15px;
+                right: 12px;
+                gap: 6px;
+            }
+
+            .wallet-badge {
+                display: none;
+            }
+
+            .candidates-grid {
+                grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+                gap: 14px;
+            }
+
+            .vote-footer {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .secondary-btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .candidates-grid {
+                grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+            }
+
+            .candidate-image {
+                height: 180px;
+            }
+
+            .vote-header h1 {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Transaction Overlay -->
+    <div id="txOverlay">
+        <div class="tx-spinner"></div>
+        <div id="txOverlayText">Đang gửi giao dịch...<br>Vui lòng xác nhận trên MetaMask</div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast"></div>
+
+    <!-- Header -->
+    <div class="netflix-header">
+        <h1 class="netflix-logo">VOTING ONLINE</h1>
+    </div>
+
+    <!-- Top-right: Wallet info + Logout -->
+    <div class="top-right-bar">
+        <div class="wallet-badge" id="walletBadge" style="display:none;">
+            <span class="wallet-dot"></span>
+            <span id="walletAddrShort">🦊 Ví chưa kết nối</span>
+        </div>
+        <a href="/" class="logout-btn">🚪 Đăng Xuất</a>
+    </div>
+
+    <div class="vote-container">
+        <!-- Network warning -->
+        <div id="networkBanner">
+            ⚠️ <strong>Sai mạng!</strong> Vui lòng chuyển MetaMask sang <strong>Cronos Testnet</strong> để vote.
+            <br><small style="opacity:0.8;">Chain ID: 338 | RPC: https://evm-t3.cronos.org</small>
+        </div>
+
+        <!-- Wallet not connected notice -->
+        <div id="walletNotice">
+            <p>🦊 Bạn cần kết nối MetaMask để có thể bỏ phiếu trên Blockchain.</p>
+            <button class="connect-wallet-btn" onclick="connectMetaMask()">Kết Nối MetaMask</button>
+        </div>
+
+        <!-- Vote Header -->
+        <div class="vote-header">
+            <h1>🗳️ {{ election_name if election_name else "Chọn Ứng Viên" }}</h1>
+            <p>Chọn ứng viên bên dưới — MetaMask sẽ yêu cầu xác nhận giao dịch</p>
+        </div>
+
+        <!-- Candidates Grid -->
+        {% if candidates %}
+        <div class="candidates-grid">
+            {% for c in candidates %}
+            <div class="candidate-card">
+                {% if c.Image and c.Image != 'nan' %}
+                {% set img_src = c.Image if (c.Image.startswith('/img/') or c.Image.startswith('http')) else '/img/' +
+                c.Image %}
+                {% else %}
+                {% set img_src = '/img/nhanvat1.jpg' %}
+                {% endif %}
+                <img src="{{ img_src }}" alt="{{ c.Name }}" class="candidate-image" onerror="loadPlaceholder(this)">
+                <div class="candidate-info">
+                    <div class="candidate-name">{{ c.Name }}</div>
+                    <div class="candidate-desc">{{ c.Description if c.Description and c.Description != 'nan' else '' }}
+                    </div>
+                    <button class="vote-button" id="btn-{{ loop.index }}" onclick="vote('{{ c.Name }}', this)">
+                        <span class="btn-spinner" id="spinner-{{ loop.index }}"></span>
+                        <span class="btn-label">✓ Bỏ Phiếu</span>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <!-- Không có ứng viên nào -->
+        <div style="text-align:center; padding: 60px 20px; color: #aaa;">
+            <div style="font-size: 3em; margin-bottom: 16px;">🗳️</div>
+            <h2 style="color: #fff; margin-bottom: 10px;">Chưa có ứng viên</h2>
+            <p style="font-size: 1em; color: #888; margin-bottom: 24px;">
+                Cuộc bầu cử này chưa có ứng viên nào được thêm vào.<br>
+                Vui lòng liên hệ quản trị viên để thêm ứng viên.
+            </p>
+            <a href="/admin"
+                style="padding: 12px 28px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #ccc; text-decoration: none; font-weight: 600; transition: all 0.3s;">
+                ⚙️ Vào Trang Quản Trị
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Footer -->
+        <div class="vote-footer">
+            <a href="/result" class="secondary-btn">📊 Xem Kết Quả</a>
+        </div>
+    </div>
+
+    <!-- ethers.js -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+
+    <script>
+        // ===================== UTILS =====================
+
+        function loadPlaceholder(img) {
+            img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 300'%3E%3Crect fill='%23222' width='300' height='300'/%3E%3Ccircle cx='150' cy='100' r='40' fill='%23555'/%3E%3Cpath d='M 90 160 Q 90 135 150 135 Q 210 135 210 160 L 210 240 L 90 240 Z' fill='%23555'/%3E%3Ctext x='150' y='275' font-size='16' text-anchor='middle' fill='%23888'%3ENo Image%3C/text%3E%3C/svg%3E";
+        }
+
+        let toastTimer;
+        function showToast(msg, type = 'info', duration = 4000) {
+            const t = document.getElementById('toast');
+            clearTimeout(toastTimer);
+            t.className = 'show ' + type;
+            t.innerHTML = msg;
+            toastTimer = setTimeout(() => { t.classList.remove('show'); }, duration);
+        }
+
+        function setTxOverlay(visible, text = '') {
+            const el = document.getElementById('txOverlay');
+            el.classList.toggle('show', visible);
+            if (text) document.getElementById('txOverlayText').innerHTML = text;
+        }
+
+        function setBtnLoading(btn, loading) {
+            const spinner = btn.querySelector('.btn-spinner');
+            const label = btn.querySelector('.btn-label');
+            btn.disabled = loading;
+            spinner.style.display = loading ? 'inline-block' : 'none';
+            label.textContent = loading ? 'Đang xử lý...' : '✓ Bỏ Phiếu';
+        }
+
+        // Disable / enable all vote buttons
+        function setAllBtnsDisabled(disabled) {
+            document.querySelectorAll('.vote-button').forEach(b => {
+                if (disabled) b.disabled = true;
+                else if (!b._wasLoading) b.disabled = false;
+            });
+        }
+
+        // ===================== METAMASK =====================
+
+        // ===================== CONFIG =====================
+        // Đặt CONTRACT_ADDRESS = "" nếu chưa deploy contract
+        // hoặc điền địa chỉ contract đã deploy lên mạng đang dùng
+        const CONTRACT_ADDRESS = "0x1070A5c5219a0E9b6B0cc6374400F22411AF956e"; 
+        const CRONOS_TESTNET_CHAIN_ID = 338; // 0x152 — chỉ kiểm tra khi CONTRACT_ADDRESS có giá trị
+
+        async function checkNetwork(provider) {
+            const network = await provider.getNetwork();
+            return Number(network.chainId) === CRONOS_TESTNET_CHAIN_ID;
+        }
+
+        // Kiểm tra xem địa chỉ có phải là smart contract không
+        async function isContract(provider, address) {
+            try {
+                const code = await provider.getCode(address);
+                return code && code !== '0x' && code !== '0x0';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        async function connectMetaMask() {
+            if (!window.ethereum) {
+                showToast('❌ Chưa cài MetaMask! Vui lòng cài extension.', 'error', 6000);
+                return false;
+            }
+            try {
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                await updateWalletUI();
+                return true;
+            } catch (e) {
+                showToast('❌ Bạn đã từ chối kết nối ví.', 'error');
+                return false;
+            }
+        }
+
+        async function updateWalletUI() {
+            if (!window.ethereum) return;
+            try {
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                const accounts = await provider.listAccounts();
+
+                const notice = document.getElementById('walletNotice');
+                const badge = document.getElementById('walletBadge');
+                const addrEl = document.getElementById('walletAddrShort');
+                const netBanner = document.getElementById('networkBanner');
+
+                if (accounts.length === 0) {
+                    notice.style.display = 'block';
+                    badge.style.display = 'none';
+                    netBanner.style.display = 'none';
+                    return;
+                }
+
+                const address = await accounts[0].getAddress();
+                const short = address.substring(0, 6) + '...' + address.substring(38);
+                addrEl.textContent = '🦊 ' + short;
+                badge.style.display = 'flex';
+                notice.style.display = 'none';
+
+                // Chỉ kiểm tra mạng khi đang dùng Smart Contract
+                if (CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42) {
+                    const isCorrectNet = await checkNetwork(provider);
+                    netBanner.style.display = isCorrectNet ? 'none' : 'block';
+                } else {
+                    // Chế độ backend: không cần kiểm tra mạng
+                    netBanner.style.display = 'none';
+                }
+
+            } catch (e) {
+                console.warn('updateWalletUI error:', e);
+            }
+        }
+
+        // ===================== VOTE =====================
+
+        async function vote(candidate, btn) {
+            if (!window.ethereum) {
+                showToast('❌ Chưa cài MetaMask!', 'error');
+                return;
+            }
+
+            const provider = new ethers.BrowserProvider(window.ethereum);
+
+            // Kiểm tra tài khoản đã kết nối chưa
+            const accounts = await provider.listAccounts();
+            if (accounts.length === 0) {
+                showToast('⚠️ Vui lòng kết nối MetaMask trước khi bỏ phiếu.', 'warning');
+                document.getElementById('walletNotice').style.display = 'block';
+                return;
+            }
+
+            // Bắt đầu loading
+            setBtnLoading(btn, true);
+            setAllBtnsDisabled(true);
+            setTxOverlay(true, 'Đang xử lý...<br><small style="opacity:0.7;">Vui lòng chờ...</small>');
+
+            try {
+                const signer = await provider.getSigner();
+                const address = await signer.getAddress();
+                console.log('🗳️ Vote bởi:', address, '→ Ứng viên:', candidate);
+
+                // ── Chế độ Smart Contract ──────────────────────────────────
+                // Nếu CONTRACT_ADDRESS được cấu hình, kiểm tra xem nó có tồn tại trên mạng không
+                let useContract = false;
+                if (CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42) {
+                    setTxOverlay(true, 'Đang kiểm tra Smart Contract...<br><small style="opacity:0.7;">Vui lòng chờ</small>');
+                    const contractExists = await isContract(provider, CONTRACT_ADDRESS);
+                    if (contractExists) {
+                        useContract = true;
+                        console.log('✅ Tìm thấy Smart Contract tại:', CONTRACT_ADDRESS);
+                    } else {
+                        console.warn('⚠️ Không tìm thấy Smart Contract tại:', CONTRACT_ADDRESS, '→ Chuyển sang chế độ Backend');
+                    }
+                }
+
+                if (useContract) {
+                    // ── Gọi Smart Contract ────────────────────────────────
+                    // Kiểm tra mạng trước khi gọi contract
+                    const isCorrectNet = await checkNetwork(provider);
+                    if (!isCorrectNet) {
+                        setTxOverlay(false);
+                        showToast('⚠️ Sai mạng! Hãy chuyển MetaMask sang Cronos Testnet (Chain ID: 338).', 'warning', 6000);
+                        document.getElementById('networkBanner').style.display = 'block';
+                        setBtnLoading(btn, false);
+                        setAllBtnsDisabled(false);
+                        return;
+                    }
+
+                    const abi = [
+                        {
+                            "inputs": [{ "internalType": "string", "name": "name", "type": "string" }],
+                            "name": "vote",
+                            "outputs": [],
+                            "stateMutability": "nonpayable",
+                            "type": "function"
+                        },
+                        {
+                            "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
+                            "name": "hasVoted",
+                            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+                            "stateMutability": "view",
+                            "type": "function"
+                        }
+                    ];
+
+                    const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
+
+                    setTxOverlay(true, 'Đang gửi giao dịch...<br><small style="opacity:0.7;">Vui lòng xác nhận trên MetaMask</small>');
+
+                    const tx = await contract.vote(candidate, { gasLimit: 300000 });
+
+                    setTxOverlay(true, `Giao dịch đã gửi! ⏳<br><small style="opacity:0.7;">Đang chờ xác nhận...<br>${tx.hash.substring(0, 12)}...</small>`);
+                    showToast('⏳ Giao dịch đã gửi, chờ xác nhận...', 'info', 10000);
+
+                    const receipt = await tx.wait();
+                    setTxOverlay(false);
+
+                    if (receipt.status === 1) {
+                        // Ghi nhận vào server
+                        try {
+                            await fetch('/api/record_vote', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'same-origin',
+                                body: JSON.stringify({
+                                    candidate: candidate,
+                                    tx_hash: receipt.hash || tx.hash,
+                                    address: address
+                                })
+                            });
+                        } catch (e) {
+                            console.warn('Không thể ghi vote vào server:', e);
+                        }
+                        voteSuccess(candidate, btn, 'blockchain', receipt.hash || tx.hash);
+                    } else {
+                        setTxOverlay(false);
+                        showToast('❌ Giao dịch bị đảo ngược bởi Smart Contract!', 'error', 6000);
+                        setBtnLoading(btn, false);
+                        setAllBtnsDisabled(false);
+                    }
+
+                } else {
+                    // ── Chế độ Backend (Ký message + ghi server) ─────────
+                    setTxOverlay(true, 'Đang ký xác nhận vote...<br><small style="opacity:0.7;">Vui lòng xác nhận trên MetaMask</small>');
+
+                    const timestamp = Date.now();
+                    const message = `Tôi bỏ phiếu cho: ${candidate}\nĐịa chỉ: ${address}\nThời gian: ${timestamp}`;
+
+                    // Yêu cầu người dùng ký message bằng MetaMask
+                    let signature;
+                    try {
+                        signature = await signer.signMessage(message);
+                    } catch (signErr) {
+                        setTxOverlay(false);
+                        if (signErr.code === 4001 || (signErr.message && signErr.message.includes('user rejected'))) {
+                            showToast('ℹ️ Bạn đã hủy ký xác nhận vote.', 'warning');
+                        } else {
+                            showToast('❌ Lỗi ký xác nhận: ' + signErr.message, 'error');
+                        }
+                        setBtnLoading(btn, false);
+                        setAllBtnsDisabled(false);
+                        return;
+                    }
+
+                    setTxOverlay(true, 'Đang ghi nhận phiếu bầu...<br><small style="opacity:0.7;">Vui lòng chờ</small>');
+
+                    // Gởi lên server để ghi nhận
+                    const resp = await fetch('/api/record_vote', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            candidate: candidate,
+                            address: address,
+                            signature: signature,
+                            message: message,
+                            tx_hash: 'sig:' + signature.substring(0, 18)
+                        })
+                    });
+
+                    setTxOverlay(false);
+
+                    const result = await resp.json();
+                    if (result.success) {
+                        voteSuccess(candidate, btn, 'backend', result.tx_hash);
+                    } else {
+                        const errMsg = result.error || 'Lỗi ghi nhận vote.';
+                        if (errMsg.includes('Bạn đã') || errMsg.includes('da vote') || errMsg.includes('already voted')) {
+                            showToast('⚠️ Bạn đã bỏ phiếu rồi! Mỗi ví chỉ được vote một lần.', 'warning', 7000);
+                        } else {
+                            showToast('❌ ' + errMsg, 'error', 7000);
+                        }
+                        setBtnLoading(btn, false);
+                        setAllBtnsDisabled(false);
+                    }
+                }
+
+            } catch (err) {
+                console.error('❌ Lỗi vote:', err);
+                setTxOverlay(false);
+
+                let msg = 'Vote thất bại!';
+
+                if (err.code === 4001 || (err.message && err.message.includes('user rejected'))) {
+                    msg = 'Bạn đã từ chối giao dịch trên MetaMask.';
+                } else if (err.reason) {
+                    const reason = err.reason;
+                    if (reason.includes('Ban da vote roi') || reason.includes('already voted') || reason.includes('da vote')) {
+                        msg = '⚠️ Bạn đã bỏ phiếu rồi! Mỗi ví chỉ được vote một lần.';
+                    } else {
+                        msg = reason;
+                    }
+                } else if (err.message) {
+                    if (err.message.includes('Ban da vote roi') || err.message.includes('already voted')) {
+                        msg = '⚠️ Bạn đã bỏ phiếu rồi! Mỗi ví chỉ được vote một lần.';
+                    } else if (err.message.includes('internal accounts') || err.message.includes('cannot include data') || err.message.includes('-32602')) {
+                        msg = '❌ Lỗi Smart Contract: Địa chỉ contract không hợp lệ trên mạng này. Hãy kiểm tra lại địa chỉ contract hoặc mạng MetaMask.';
+                    } else if (err.message.includes('CALL_EXCEPTION') || err.message.includes('execution reverted')) {
+                        msg = '❌ Smart Contract từ chối giao dịch. Có thể bạn đã vote rồi hoặc sai mạng.';
+                    } else {
+                        msg = err.message.length > 200 ? err.message.substring(0, 200) + '...' : err.message;
+                    }
+                }
+
+                showToast('❌ ' + msg, 'error', 8000);
+                setBtnLoading(btn, false);
+                setAllBtnsDisabled(false);
+            }
+        }
+
+        // ── Hàm xử lý UI sau khi vote thành công ──────────────────────
+        function voteSuccess(candidate, btn, mode, txHash) {
+            btn.querySelector('.btn-label').textContent = '✅ Đã Bỏ Phiếu';
+            btn.style.background = 'linear-gradient(90deg, #1b5e20, #2e7d32)';
+            btn.style.boxShadow = '0 0 20px rgba(76, 175, 80, 0.4)';
+            btn.disabled = true;
+            btn.querySelector('.btn-spinner').style.display = 'none';
+
+            // Re-enable các nút khác
+            document.querySelectorAll('.vote-button').forEach(b => {
+                if (b !== btn) {
+                    b.disabled = false;
+                    b.querySelector('.btn-spinner').style.display = 'none';
+                    b.querySelector('.btn-label').textContent = '✓ Bỏ Phiếu';
+                }
+            });
+
+            const modeLabel = mode === 'blockchain' ? '⛓️ Blockchain' : '🖊️ Chữ ký điện tử';
+            let txLink = "";
+            
+            // Nếu là giao dịch blockchain thực (không phải chữ ký offline), hiển thị link Explorer
+            if (txHash && !txHash.startsWith('sig:')) {
+                txLink = `<br><a href="https://explorer.cronos.org/testnet/tx/${txHash}" target="_blank" style="color:#fff;text-decoration:underline;font-size:0.9em;">🔍 Xem giao dịch trên Explorer</a>`;
+            }
+
+            showToast(
+                `✅ Vote thành công cho <strong>${candidate}</strong>! (${modeLabel})${txLink}<br>` +
+                `<a href="/result" style="color:#fff;text-decoration:underline;font-size:0.9em;">📊 Xem kết quả ngay →</a>`,
+                'success', 8000
+            );
+
+            // Tự chuyển sang trang kết quả sau 4 giây
+            setTimeout(() => { window.location.href = '/result'; }, 4000);
+        }
+
+        // ===================== INIT =====================
+
+        // Lắng nghe thay đổi tài khoản / mạng
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', () => { updateWalletUI(); });
+            window.ethereum.on('chainChanged', () => { updateWalletUI(); });
+        }
+
+        // Khởi tạo UI khi trang load
+        document.addEventListener('DOMContentLoaded', updateWalletUI);
+    </script>
+
+</body>
+
+</html>

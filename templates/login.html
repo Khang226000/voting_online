@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🗳️ Đăng Nhập - Hệ Thống Bỏ Phiếu</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background: #000;
+            position: relative;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%; /* Đổi từ 100% sang 100vh để đảm bảo bao phủ toàn bộ viewport */
+            background-image: 
+                linear-gradient(0deg, rgba(0,0,0,0.05), rgba(0,0,0,0.05)),
+                url('/img/banner.jpg');
+            background-size: 100% 100%, cover;
+            background-position: center, center;
+            background-attachment: fixed;
+            background-color: #1a3a5c;
+            z-index: -2;
+            filter: blur(2px) brightness(1.1) saturate(1.0); /* Giữ nguyên */
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%; /* Đổi từ 100% sang 100vh */
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.4) 100%);
+            z-index: -1;
+        }
+
+        .netflix-header {
+            position: fixed;
+            top: 20px;
+            left: 30px;
+            z-index: 100;
+        }
+
+        .netflix-logo {
+            font-size: 2.5em;
+            font-weight: 900;
+            color: #e50914;
+            letter-spacing: -0.05em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin: 0;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .netflix-subtitle {
+            font-size: 0.8em;
+            color: #aaa;
+            letter-spacing: 0.1em;
+            margin: 0;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .netflix-header { top: 15px; left: 20px; }
+            .netflix-logo { font-size: 1.8em; }
+            .netflix-subtitle { font-size: 0.75em; }
+        }
+
+        .login-container {
+            background: rgba(20, 20, 20, 0.92);
+            backdrop-filter: blur(12px);
+            border-radius: 14px;
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.8),
+                0 0 1px rgba(255, 255, 255, 0.1) inset;
+            width: 100%;
+            max-width: 440px; /* Tăng nhẹ chiều rộng */
+            padding: 50px 40px;
+            margin: 80px auto 40px auto;
+            animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            position: relative;
+            z-index: 1;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); } /* Tối ưu animation */
+            to   { opacity: 1; transform: translateY(0) scale(1); } /* Tối ưu animation */
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 35px;
+        }
+
+        .login-header .logo {
+            font-size: 4em;
+            margin-bottom: 12px; /* Giữ nguyên */
+            display: block;
+            animation: bounce 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(-20px); }
+        }
+
+        .login-header h1 {
+            font-size: 1.8em;
+            color: #ffffff;
+            margin: 0 0 8px 0;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .login-header p {
+            font-size: 0.92em;
+            color: #aaa;
+            margin: 0;
+        }
+
+        /* Flash messages */
+        .flash-messages { margin-bottom: 20px; }
+
+        .flash-msg {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 500;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+
+        .flash-error   { background: rgba(229, 9, 20, 0.15); border: 1px solid rgba(229, 9, 20, 0.4); color: #ff6b6b; }
+        .flash-success { background: rgba(0, 200, 100, 0.12); border: 1px solid rgba(0, 200, 100, 0.35); color: #4ddb8f; }
+        .flash-info    { background: rgba(0, 180, 255, 0.12); border: 1px solid rgba(0, 180, 255, 0.35); color: #6bd5ff; }
+
+        .form-group { margin-bottom: 18px; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #333;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+            box-sizing: border-box;
+        }
+
+        .form-group input::placeholder { color: #666; }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #2a5298;
+            background: rgba(255, 255, 255, 0.95);
+            color: #000;
+            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(90deg, #e50914, #c20710);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(90deg, #c20710, #a00509);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(229, 9, 20, 0.45);
+        }
+
+        .login-btn:active { transform: translateY(0); }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 28px 0 22px 0;
+        }
+
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+        }
+
+        .divider::before { background: linear-gradient(to right, transparent, #444); }
+        .divider::after  { background: linear-gradient(to left, transparent, #444); }
+
+        .divider span {
+            padding: 0 14px;
+            color: #777;
+            font-size: 0.85em;
+        }
+
+        /* MetaMask section */
+        .metamask-section { margin-bottom: 5px; }
+
+        .metamask-btn {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(90deg, #f6851b, #e67e22);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .metamask-btn:hover {
+            background: linear-gradient(90deg, #e67e22, #d35400);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px rgba(246, 133, 27, 0.4);
+        }
+
+        .metamask-btn:active { transform: translateY(0); }
+
+        .metamask-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .metamask-hint {
+            color: #888;
+            margin-top: 10px;
+            font-size: 0.83em;
+            line-height: 1.5;
+            text-align: center;
+        }
+
+        /* Wallet status */
+        #walletStatus {
+            margin-top: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.88em;
+            font-weight: 500;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #walletStatus.connecting {
+            display: flex;
+            background: rgba(246, 133, 27, 0.12);
+            border: 1px solid rgba(246, 133, 27, 0.35);
+            color: #f6a55b;
+        }
+
+        #walletStatus.connected {
+            display: flex;
+            background: rgba(0, 200, 100, 0.12);
+            border: 1px solid rgba(0, 200, 100, 0.35);
+            color: #4ddb8f;
+        }
+
+        #walletStatus.error {
+            display: flex;
+            background: rgba(229, 9, 20, 0.12);
+            border: 1px solid rgba(229, 9, 20, 0.35);
+            color: #ff6b6b;
+        }
+
+        .spinner {
+            width: 14px; height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .admin-link-wrapper {
+            text-align: center;
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .admin-link {
+            color: #e50914;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: color 0.3s;
+        }
+
+        .admin-link:hover { color: #ff0f1a; text-decoration: underline; }
+
+        @media (max-width: 600px) {
+            body { padding: 15px; }
+            .login-container { padding: 35px 22px; max-width: 100%; margin: 70px auto 20px; }
+            .login-header h1 { font-size: 1.5em; }
+            .login-header .logo { font-size: 3em; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="netflix-header">
+    <h1 class="netflix-logo">VOTING ONLINE</h1>
+</div>
+
+<div class="login-container">
+    <div class="login-header">
+        <span class="logo">🗳️</span>
+        <h1>Bỏ Phiếu Trực Tuyến</h1>
+        <p>An toàn • Minh bạch • Blockchain</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for category, message in messages %}
+            <div class="flash-msg flash-{{ category }}">
+                {% if category == 'error' %}⚠️{% elif category == 'success' %}✅{% else %}ℹ️{% endif %}
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Form Đăng Nhập Thường -->
+    <form method="POST" id="loginForm">
+        <div class="form-group">
+            <label for="votecode">🔑 Mã Bầu Cử</label>
+            <input type="text" id="votecode" name="votecode"
+                   placeholder="Nhập mã bầu cử (vd: VOTE2024)..." required>
+        </div>
+        <div class="form-group">
+            <label for="username">👤 Tên Đăng Nhập</label>
+            <input type="text" id="username" name="username"
+                   placeholder="Nhập tên của bạn..." required>
+        </div>
+        <button type="submit" class="login-btn">🔐 Đăng Nhập</button>
+    </form>
+
+    <!-- Divider -->
+    <div class="divider"><span>hoặc đăng nhập bằng ví</span></div>
+
+    <!-- MetaMask Login -->
+    <div class="metamask-section">
+        <div class="form-group" style="margin-bottom:12px;">
+            <label for="votecodeWallet">🔑 Mã Bầu Cử (tùy chọn)</label>
+            <input type="text" id="votecodeWallet"
+                   placeholder="Để trống → dùng cuộc bầu cử mặc định">
+        </div>
+        <button class="metamask-btn" id="metamaskBtn" onclick="connectWallet()">
+            🦊 <span id="metamaskBtnText">Đăng Nhập bằng MetaMask</span>
+        </button>
+        <p class="metamask-hint">Ký xác thực bằng ví của bạn — không tốn phí gas.</p>
+
+        <!-- Trạng thái kết nối ví -->
+        <div id="walletStatus">
+            <span id="walletStatusIcon"></span>
+            <span id="walletStatusText"></span>
+        </div>
+    </div>
+
+    <div class="admin-link-wrapper">
+        <a href="/admin" class="admin-link">⚙️ Trang Quản Trị</a>
+    </div>
+</div>
+
+<!-- ethers.js -->
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+
+<script>
+function setWalletStatus(type, html) {
+    const el = document.getElementById('walletStatus');
+    const iconEl = document.getElementById('walletStatusIcon');
+    const textEl = document.getElementById('walletStatusText');
+    el.className = 'connecting'; // reset
+    el.classList.remove('connecting', 'connected', 'error');
+    el.classList.add(type);
+
+    if (type === 'connecting') {
+        iconEl.innerHTML = '<span class="spinner"></span>';
+    } else {
+        iconEl.innerHTML = '';
+    }
+    textEl.innerHTML = html;
+}
+
+async function connectWallet() {
+    if (!window.ethereum) {
+        setWalletStatus('error', '❌ Chưa cài MetaMask! <a href="https://metamask.io" target="_blank" style="color:inherit">Tải tại đây</a>');
+        return;
+    }
+
+    const btn = document.getElementById('metamaskBtn');
+    const btnText = document.getElementById('metamaskBtnText');
+    btn.disabled = true;
+    btnText.textContent = 'Đang kết nối...';
+    setWalletStatus('connecting', 'Đang yêu cầu kết nối ví...');
+
+    try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+
+        // Yêu cầu kết nối tài khoản
+        await provider.send("eth_requestAccounts", []);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+
+        const shortAddr = address.substring(0, 6) + '...' + address.substring(38);
+        setWalletStatus('connecting', `✅ Ví: <strong>${shortAddr}</strong> — Đang yêu cầu ký xác thực...`);
+        btnText.textContent = 'Đang ký xác thực...';
+
+        // Ký message để xác thực
+        const message = "Login to Voting System";
+        const signature = await signer.signMessage(message);
+
+        setWalletStatus('connecting', 'Đang xác minh chữ ký...');
+
+        // Lấy votecode từ ô input MetaMask
+        const votecode = document.getElementById('votecodeWallet').value.trim();
+
+        // Gửi lên server
+        const res = await fetch("/login_wallet", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ address, signature, message, votecode })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            setWalletStatus('connected', '✅ Xác thực thành công! Đang chuyển hướng...');
+            btnText.textContent = 'Thành công!';
+            setTimeout(() => { window.location.href = "/vote_page"; }, 800);
+        } else {
+            const errMsg = data.error || "Đăng nhập MetaMask thất bại.";
+            setWalletStatus('error', '❌ ' + errMsg);
+            btn.disabled = false;
+            btnText.textContent = 'Đăng Nhập bằng MetaMask';
+        }
+
+    } catch (err) {
+        console.error("Lỗi MetaMask:", err);
+        let msg = "Lỗi kết nối ví.";
+        if (err.code === 4001 || (err.message && err.message.includes("user rejected"))) {
+            msg = "Bạn đã từ chối yêu cầu trong MetaMask.";
+        } else if (err.message) {
+            msg = err.message;
+        }
+        setWalletStatus('error', '❌ ' + msg);
+        btn.disabled = false;
+        btnText.textContent = 'Đăng Nhập bằng MetaMask';
+    }
+}
+</script>
+
+</body>
+</html>

@@ -17,6 +17,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Giới hạn 16MB
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FILE_PATH = os.path.join(BASE_DIR, "database/cand_list.csv")
 ELECTION_FILE_PATH = os.path.join(BASE_DIR, "database/elections.csv")
+VOTER_FILE_PATH = os.path.join(BASE_DIR, "database/voters.csv")
 IMG_DIR = os.path.join(BASE_DIR, "img")
 
 if not os.path.exists(IMG_DIR):
@@ -81,6 +82,22 @@ def get_elections():
         df["Allowed Wallets"] = ""
     return df
 
+def get_voters():
+    if not os.path.exists(VOTER_FILE_PATH):
+        df = pd.DataFrame(columns=["ElectionCode", "VoterIdentifier"])
+        df.to_csv(VOTER_FILE_PATH, index=False)
+    return pd.read_csv(VOTER_FILE_PATH)
+
+def has_voted(votecode, identifier):
+    if not identifier or not votecode: return False
+    df = get_voters()
+    return not df[(df["ElectionCode"] == votecode) & (df["VoterIdentifier"].str.lower() == str(identifier).lower())].empty
+
+def record_voter(votecode, identifier):
+    df = get_voters()
+    new_row = pd.DataFrame([{"ElectionCode": votecode, "VoterIdentifier": str(identifier).lower()}])
+    df = pd.concat([df, new_row], ignore_index=True)
+    df.to_csv(VOTER_FILE_PATH, index=False)
 
 # =========================
 # Phục vụ ảnh từ thư mục img
@@ -138,12 +155,16 @@ def vote_page():
 
     all_candidates = get_candidates()
 
+    voter_id = session.get("user")
+    user_has_voted = has_voted(votecode, voter_id)
+
     if filtered_elections.empty:
         # Không tìm thấy cuộc bầu cử → hiển thị tất cả ứng viên làm fallback
         print(f"[WARN] Không tìm thấy election với code='{votecode}', hiển thị tất cả ứng viên.")
         return render_template("vote.html",
                                candidates=all_candidates.to_dict(orient="records"),
-                               election_name=session.get("election_name", "Bầu Cử"))
+                               election_name=session.get("election_name", "Bầu Cử"),
+                               has_voted=user_has_voted)
 
     current_election = filtered_elections.iloc[0]
 
@@ -162,7 +183,9 @@ def vote_page():
 
     return render_template("vote.html",
                            candidates=filtered_candidates.to_dict(orient="records"),
-                           election_name=session.get("election_name", current_election["Name"]))
+                           election_name=session.get("election_name", current_election["Name"]),
+                           votecode=votecode,
+                           has_voted=user_has_voted)
 
 
 # =========================
@@ -197,8 +220,13 @@ def record_vote():
     tx_hash        = data.get("tx_hash", "")
     voter_address  = data.get("address", "")
 
-    # Kiểm tra quyền bầu cử dựa trên whitelist của cuộc bầu cử
+    # Kiểm tra xem đã vote chưa
     votecode = session.get("votecode")
+    voter_id = voter_address if voter_address else session.get("user")
+    if has_voted(votecode, voter_id):
+        return jsonify({"success": False, "error": "Bạn đã bỏ phiếu trong cuộc bầu cử này rồi!"})
+
+    # Kiểm tra quyền bầu cử dựa trên whitelist của cuộc bầu cử
     if votecode:
         elections = get_elections()
         election = elections[elections["Code"] == votecode]
@@ -223,6 +251,9 @@ def record_vote():
         # Tăng Vote Count
         df.loc[mask, "Vote Count"] = df.loc[mask, "Vote Count"].fillna(0).astype(int) + 1
         df.to_csv(FILE_PATH, index=False)
+        
+        # Ghi nhận người dùng đã vote
+        record_voter(votecode, voter_id)
 
         current_votes = int(df.loc[mask, "Vote Count"].values[0])
         print(f"[VOTE] {voter_address[:8] if voter_address else '?'}... → {candidate_name} | TX: {tx_hash[:10] if tx_hash else '?'}... | Tổng: {current_votes}")
@@ -472,6 +503,9 @@ def reset_votes():
     df = get_candidates()
     df["Vote Count"] = 0
     df.to_csv(FILE_PATH, index=False)
+    # Xóa danh sách người đã vote khi reset hệ thống
+    if os.path.exists(VOTER_FILE_PATH):
+        os.remove(VOTER_FILE_PATH)
     flash("🔄 Đã reset toàn bộ kết quả bầu cử!", "warning")
     return redirect("/admin")
 

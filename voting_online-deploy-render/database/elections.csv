@@ -1,9 +1,14 @@
 Code,Name,Candidates,Allowed Wallets
-VOTE2024,Bầu cử mẫu,"Ứng viên 1,Ứng viên 2",
-VOTE123,Bầu cử chủ tịch,"Narendra Modi,Akhilesh Yadav,Mamata Banerjee",
 VOTE1234,Bầu cử phó chủ tịch,"Arvind Kejriwal,Udhav Thakrey,NOTA,Alice Inboder,Takemichi Nami",
 votene,Ai thông minh hơn học sinh lớp 5,"Narendra Modi,Rahul Gandhi,Arvind Kejriwal,NOTA,Mamata Banerjee,Alice Inboder,Nguyễn Quốc Hải",
 VOTE3421,Bầu cử lớp trưởng,"Narendra Modi,Rahul Gandhi,Mamata Banerjee,Alice Inboder,Quốc Hải,Nguyễn Quốc Hải,Nguyễn Tòng Phúc",
 @123,B1_Khang,"Narendra Modi,Rahul Gandhi,NOTA,Akhilesh Yadav,Alice Inboder,Takemichi Nami,Quốc Hải",
-demo,Demoapp,"Narendra Modi,Rahul Gandhi,Arvind Kejriwal,Udhav Thakrey,NOTA,Akhilesh Yadav,Quốc Hải",
 STTT,Lần cuối,"Mamata Banerjee,Alice Inboder,Takemichi Nami,Quốc Hải,Nguyễn Quốc Hải,Nguyễn Tòng Phúc",0x1070A5c5219a0E9b6B0cc6374400F22411AF956e
+VOTE0,Bầu cử test,"Rahul Gandhi,Arvind Kejriwal,Udhav Thakrey,NOTA,Akhilesh Yadav,Takemichi Nami","0xd3D80b6De58Bfb705804cF67F00a94e2F13167fB,0xE2e18DB86a5b771F3c30EEDEeA7705E69F1BC730"
+VOTE14,hihi haha,"Arvind Kejriwal,Udhav Thakrey,Akhilesh Yadav,Takemichi Nami,Nguyễn Quốc Hải,Nguyễn Tòng Phúc","0xEF8C2A3088e1A894bfe79dB086b38748bbc373E9,0xd3D80b6De58Bfb705804cF67F00a94e2F13167fB"
+VOTE1,A1,"Narendra Modi,Udhav Thakrey,NOTA,Akhilesh Yadav,Mamata Banerjee,Takemichi Nami,Quốc Hải,Nguyễn Quốc Hải,Nguyễn Tòng Phúc","0x1070A5c5219a0E9b6B0cc6374400F22411AF956e,0xd3D80b6De58Bfb705804cF67F00a94e2F13167fB"
+VOTE2,A2,"Arvind Kejriwal,Udhav Thakrey,NOTA,Alice Inboder,Takemichi Nami,Quốc Hải",0x1070A5c5219a0E9b6B0cc6374400F22411AF956e
+vote3,123,"Udhav Thakrey,NOTA,Akhilesh Yadav,Mamata Banerjee,Takemichi Nami,Quốc Hải,Nguyễn Quốc Hải,Nguyễn Tòng Phúc",0x1070A5c5219a0E9b6B0cc6374400F22411AF956e
+VOTE2024,BẦU CỬ MẪU,"Narendra Modi,Rahul Gandhi,Arvind Kejriwal,Udhav Thakrey,NOTA,Akhilesh Yadav,Mamata Banerjee,Alice Inboder,Takemichi Nami,Quốc Hải,Nguyễn Quốc Hải,Nguyễn Tòng Phúc",
+VOTEDAYNE,Liên Hệ,"Akhilesh Yadav,Mamata Banerjee,Alice Inboder,Takemichi Nami,Quốc Hải,Nguyễn Quốc Hải,Nguyễn Tòng Phúc",0x1070A5c5219a0E9b6B0cc6374400F22411AF956e
+VOTE321,IoT,"Narendra Modi,Rahul Gandhi,Udhav Thakrey,Akhilesh Yadav,Mamata Banerjee,Alice Inboder,Takemichi Nami,Nguyễn Tòng Phúc",0x1070A5c5219a0E9b6B0cc6374400F22411AF956e

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, session, flash, jsonify
 from eth_account.messages import encode_defunct
+from eth_account import Account
 import pandas as pd
 import os
 
@@ -81,7 +82,7 @@ def login_wallet():
 
     try:
         msg = encode_defunct(text=message)
-        recovered_address = encode_defunct
+        recovered_address = Account.recover_message(msg, signature=signature)
 
         # NOTE: đoạn này giữ lại để bạn mở rộng sau
         session["user"] = address

@@ -128,6 +128,31 @@
         input:focus, textarea:focus { outline: none; border-color: var(--primary-color); }
         textarea { resize: vertical; min-height: 42px; }
 
+        /* Enhanced Wallet Input */
+        .wallet-input-wrapper {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.3s;
+        }
+        .wallet-input-wrapper:focus-within {
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.1);
+        }
+        .wallet-input-wrapper textarea {
+            background: transparent;
+            border: none;
+            width: 100%;
+            color: var(--accent-color);
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-size: 0.9em;
+            padding: 0;
+            outline: none;
+        }
+        .input-hint { font-size: 0.75em; color: #666; margin-top: 8px; display: block; }
+
         .badge-code {
             background: #333;
             padding: 4px 10px;
@@ -139,31 +164,84 @@
 
         .checkbox-group {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 12px;
-            background: #252525;
-            padding: 15px;
-            border-radius: 8px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+            background: rgba(0,0,0,0.2);
+            padding: 20px;
+            border-radius: 12px;
             margin-top: 10px;
-            max-height: 200px;
+            max-height: 350px;
             overflow-y: auto;
+            border: 1px solid rgba(255,255,255,0.05);
         }
         .checkbox-item { 
+            position: relative;
             display: flex; 
             flex-direction: column;
             align-items: center; 
-            gap: 8px; 
-            font-size: 0.85em; 
-            background: rgba(255,255,255,0.05);
-            padding: 10px;
-            border-radius: 8px;
+            gap: 12px; 
+            font-size: 0.9em; 
+            background: rgba(255,255,255,0.03);
+            padding: 15px;
+            border-radius: 12px;
             cursor: pointer;
-            border: 1px solid transparent;
-            transition: 0.3s;
+            border: 1px solid rgba(255,255,255,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .checkbox-item:hover { border-color: var(--primary-color); background: rgba(255,255,255,0.1); }
-        .checkbox-item input { margin: 0; }
-        .mini-img { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+        .checkbox-item:hover { 
+            background: rgba(255,255,255,0.08);
+            transform: translateY(-3px);
+            border-color: rgba(255,255,255,0.2);
+        }
+        .checkbox-item.active {
+            border-color: var(--primary-color);
+            background: rgba(229, 9, 20, 0.08);
+            box-shadow: 0 0 15px rgba(229, 9, 20, 0.2);
+        }
+        .checkbox-item input { 
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-color);
+        }
+        .mini-img { width: 60px; height: 60px; object-fit: cover; border-radius: 50%; border: 2px solid rgba(255,255,255,0.1); transition: 0.3s; }
+        .checkbox-item.active .mini-img { border-color: var(--primary-color); }
+
+        /* Scrollable list for table cells */
+        .scroll-list {
+            max-height: 80px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            max-width: 250px;
+            padding-right: 5px;
+        }
+        .scroll-list::-webkit-scrollbar { width: 3px; }
+        .scroll-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .item-tag {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            color: #ccc;
+            white-space: nowrap;
+        }
+        .item-tag.wallet { font-family: monospace; color: var(--accent-color); }
+        .item-tag.all-access { color: #4ddb8f; background: rgba(77,219,143,0.1); }
+
+        .btn-blockchain { 
+            background: linear-gradient(90deg, #f6851b, #e67e22); 
+            color: white; 
+            border: none;
+            font-size: 0.75em;
+            padding: 5px 10px;
+        }
+        .btn-blockchain:hover { background: #d35400; transform: scale(1.05); }
     </style>
 </head>
 <body>
@@ -226,6 +304,10 @@
                             <td><strong>{{ c.Name }}</strong></td>
                             <td><span style="color: var(--accent-color); font-weight: bold;">{{ c['Vote Count'] }}</span></td>
                             <td style="text-align: right;">
+                                <button class="btn btn-blockchain" style="padding: 5px 10px; margin-right: 5px;"
+                                    onclick="registerCandidateOnBlockchain('{{ c.Name }}', '{{ c.Description }}', '{{ img_src }}', this)">
+                                    🔗 Đăng ký Blockchain
+                                </button>
                                 <a href="/admin/delete_candidate/{{ c.Name }}" class="btn btn-del" onclick="return confirm('Xóa ứng viên này?')">🗑️ Xóa</a>
                             </td>
                         </tr>
@@ -243,18 +325,23 @@
                     <input type="text" name="code" placeholder="Mã bầu cử (VD: VOTE001)" required>
                     <input type="text" name="name" placeholder="Tên cuộc bầu cử" required>
                 </div>
-                <div class="form-group" style="margin-top: 15px;">
-                    <label for="allowed_wallets" style="font-size: 0.9em; color: #888;">Địa chỉ ví được phép (phân cách bằng dấu phẩy, để trống nếu cho phép tất cả)</label>
-                    <textarea id="allowed_wallets" name="allowed_wallets" rows="3" placeholder="0xabc..., 0xdef..., ..."></textarea>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label for="allowed_wallets" style="font-size: 0.9em; color: #aaa; margin-bottom: 8px; display: block;">🛡️ Danh sách ví được phép (Whitelist)</label>
+                    <div class="wallet-input-wrapper">
+                        <textarea id="allowed_wallets" name="allowed_wallets" rows="3" 
+                            placeholder="Nhập các địa chỉ ví (0x...), phân cách bằng dấu phẩy. Để trống để mở công khai."></textarea>
+                        <span class="input-hint">Mỗi địa chỉ ví cách nhau bằng dấu phẩy (,)</span>
+                    </div>
                 </div>
-                <p style="margin-bottom: 5px; color: #888;">Chọn ứng viên tham gia:</p>
+                <p style="margin-top: 25px; margin-bottom: 10px; color: #eee; font-weight: 600;">👥 Chọn ứng viên tham gia:</p>
                 <div class="checkbox-group">
                     {% for c in candidates %}
-                    <label class="checkbox-item">
+                    <label class="checkbox-item" onclick="toggleCandidate(this)">
                         {% set img_src = c.Image if c.Image.startswith('/img/') else '/img/' + c.Image %}
                         <img src="{{ img_src }}" class="mini-img" onerror="this.src='https://via.placeholder.com/50'">
-                        <div style="display: flex; align-items: center; gap: 5px;">
-                            <input type="checkbox" name="selected_candidates" value="{{ c.Name }}"> <span>{{ c.Name }}</span>
+                        <div style="text-align: center;">
+                            <input type="checkbox" name="selected_candidates" value="{{ c.Name }}"> 
+                            <span style="font-weight: 500;">{{ c.Name }}</span>
                         </div>
                     </label>
                     {% endfor %}
@@ -279,10 +366,30 @@
                         <tr>
                             <td><span class="badge-code">{{ e.Code }}</span></td>
                             <td><strong>{{ e.Name }}</strong></td>
-                            <td style="font-size: 0.85em; color: #aaa; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ e['Allowed Wallets'] if e['Allowed Wallets'] else 'Tất cả' }}</td>
-                            <td style="font-size: 0.85em; color: #aaa;">{{ e.Candidates }}</td>
+                            <td>
+                                <div class="scroll-list">
+                                    {% if e['Allowed Wallets'] and e['Allowed Wallets']|string != 'nan' and e['Allowed Wallets'] != '' %}
+                                        {% for wallet in e['Allowed Wallets'].split(',') %}
+                                            <span class="item-tag wallet">{{ wallet.strip() }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="item-tag all-access">Mọi địa chỉ ví</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="scroll-list">
+                                    {% for cand in e.Candidates.split(',') %}
+                                        <span class="item-tag">{{ cand.strip() }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
                             <td style="text-align: right;">
-                                <a href="/admin/delete_election/{{ e.Code }}" class="btn btn-del" onclick="return confirm('Xóa cuộc bầu cử này?')">🗑️</a>
+                                <button class="btn btn-blockchain" 
+                                    onclick="registerOnBlockchain('{{ e.Code }}', '{{ e.Name }}', '{{ e.Candidates }}', this)">
+                                    🔗 Đăng ký Blockchain
+                                </button>
+                                <a href="/admin/delete_election/{{ e.Code }}" class="btn btn-del" style="padding: 5px 10px;" onclick="return confirm('Xóa cuộc bầu cử này?')">🗑️</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -308,11 +415,202 @@
         {% endwith %}
     </div>
 
+    <!-- Ethers.js -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.6.2/dist/ethers.umd.min.js"></script>
+
     <script>
+        // Cấu hình địa chỉ Smart Contract và Chain ID (Cronos Testnet là 338)
+        const CONTRACT_ADDRESS = "0xb1069feC3dCa689500e26990aF6F7D349E7e75DB";
+        const EXPECTED_CHAIN_ID = 338; 
+        const KNOWN_ADMIN_WALLET = "0x1070A5c5219a0E9b6B0cc6374400F22411AF956e";
+
+        const ABI = [
+            "function addCandidate(string _name, string _description, string _imageUrl) public",
+            "function createElection(bytes32 _code, string _name, uint256[] _candidateIds) public",
+            "function getElectionDetails(bytes32 _code) public view returns (string, bool, uint256[])",
+            "function owner() public view returns (address)",
+            "function candidates(uint256) public view returns (uint256 id, string name, string description, string imageUrl)"
+        ];
+
+        // --- CHỨC NĂNG MỚI: ĐĂNG KÝ ỨNG VIÊN LÊN BLOCKCHAIN ---
+        async function registerCandidateOnBlockchain(name, desc, img, btn) {
+            if (!window.ethereum) {
+                alert("Vui lòng cài đặt MetaMask!");
+                return;
+            }
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = "⌛...";
+
+            try {
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                const network = await provider.getNetwork();
+                if (Number(network.chainId) !== EXPECTED_CHAIN_ID) {
+                    alert("⚠️ Hãy chuyển sang Cronos Testnet!");
+                    btn.disabled = false; btn.innerHTML = originalHTML;
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const signer = await provider.getSigner();
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+                // Kiểm tra quyền Admin
+                const contractOwner = await contract.owner();
+                const adminAddress = await signer.getAddress();
+                if (adminAddress.toLowerCase() !== contractOwner.toLowerCase()) {
+                    alert("❌ Bạn không phải là ví Admin (Owner) của Smart Contract này!");
+                    btn.disabled = false; btn.innerHTML = originalHTML;
+                    return;
+                }
+
+                console.log(`Đang đăng ký ứng viên: ${name}`);
+                const tx = await contract.addCandidate(name, desc || "Ứng viên bầu cử", img);
+                
+                alert(`⏳ Đang đăng ký ứng viên '${name}'... Vui lòng xác nhận MetaMask.`);
+                await tx.wait();
+                
+                alert(`✅ Thành công! Ứng viên '${name}' đã được thêm vào Blockchain.`);
+                btn.innerHTML = "✅ Xong";
+                btn.style.background = "#28a745";
+                btn.disabled = true;
+
+            } catch (error) {
+                console.error(error);
+                if (error.message.includes("user rejected")) {
+                    alert("❌ Giao dịch bị hủy.");
+                } else {
+                    alert("❌ Lỗi: " + (error.reason || error.message));
+                }
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        // --- CHỨC NĂNG CŨ: ĐĂNG KÝ CUỘC BẦU CỬ ---
+        async function registerOnBlockchain(code, name, candidatesStr, btn) {
+            if (!window.ethereum) {
+                alert("Vui lòng cài đặt MetaMask!");
+                return;
+            }
+
+            const originalHTML = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = "⌛ Đang xử lý...";
+
+            try {
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                
+                // 1. Kiểm tra mạng
+                const network = await provider.getNetwork();
+                if (Number(network.chainId) !== EXPECTED_CHAIN_ID) {
+                    alert("⚠️ Sai mạng! Vui lòng chuyển MetaMask sang Cronos Testnet (Chain ID: 338)");
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    return;
+                }
+
+                await window.ethereum.request({ method: 'eth_requestAccounts' });
+                const signer = await provider.getSigner();
+                const adminAddress = await signer.getAddress();
+                const contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+
+                // 2. KIỂM TRA QUYỀN ADMIN (Owner) TRƯỚC KHI GỬI
+                try {
+                    const contractOwner = await contract.owner();
+                    if (adminAddress.toLowerCase() !== contractOwner.toLowerCase() && adminAddress.toLowerCase() !== KNOWN_ADMIN_WALLET.toLowerCase()) {
+                        alert(`❌ Sai ví Admin!\n\nVí đang dùng: ${adminAddress}\nVí Admin yêu cầu: ${KNOWN_ADMIN_WALLET}\n\nVui lòng chuyển đúng ví trong MetaMask.`);
+                        btn.disabled = false;
+                        btn.innerHTML = originalHTML;
+                        return;
+                    }
+                } catch (e) { console.warn("Không thể check owner:", e); }
+
+                // 3. Chuyển đổi mã sang Bytes32 và kiểm tra lỗi
+                let codeBytes32;
+                try {
+                    codeBytes32 = ethers.encodeBytes32String(code);
+                } catch (e) {
+                    alert("❌ Lỗi: Mã bầu cử quá dài! Tối đa 31 ký tự.");
+                    btn.disabled = false;
+                    btn.innerHTML = originalHTML;
+                    return;
+                }
+                
+                // 4. Kiểm tra xem đã tồn tại chưa (Sửa lỗi: getElectionDetails revert nếu ko tồn tại)
+                try {
+                    const details = await contract.getElectionDetails(codeBytes32);
+                    if (details[0] && details[0] !== "") {
+                        alert(`❌ CUỘC BẦU CỬ ĐÃ TỒN TẠI!\nMã '${code}' đã có trên Blockchain, không thể tạo trùng.`);
+                        btn.innerHTML = "✅ Đã đăng ký";
+                        btn.style.background = "#666";
+                        return;
+                    }
+                } catch (e) { /* Election chưa tồn tại, có thể tiếp tục tạo */ }
+
+                // 5. Chuẩn bị danh sách ID ứng viên
+                const candidatesArray = candidatesStr.split(',');
+                // LƯU Ý: i + 1 chỉ đúng nếu bạn chưa bao giờ xóa ứng viên trên Blockchain. 
+                // Nếu bị lỗi, hãy đảm bảo bạn đã chạy 'addCandidate' trên Blockchain trước.
+                const candidateIds = candidatesArray.map((_, i) => i + 1); 
+
+                console.log(`Đang đăng ký cuộc bầu cử '${name}' với ${candidateIds.length} ứng viên...`);
+                
+                // 6. THỰC HIỆN GIAO DỊCH VỚI XỬ LÝ LỖI CHI TIẾT
+                let tx;
+                try {
+                    tx = await contract.createElection(codeBytes32, name, candidateIds);
+                } catch (err) {
+                    if (err.message.includes("execution reverted")) {
+                        throw new Error("ỨNG VIÊN CHƯA ĐƯỢC THÊM VÀO BLOCKCHAIN! Hãy đảm bảo ID ứng viên (1, 2, 3...) đã được tạo bằng hàm addCandidate trước đó.");
+                    }
+                    throw err;
+                }
+
+                alert(`⏳ Đang gửi giao dịch cho '${code}'... Vui lòng xác nhận trên MetaMask và CHỜ cho đến khi có thông báo thành công.`);
+                
+                await tx.wait();
+                alert(`✅ THÀNH CÔNG! Cuộc bầu cử '${name}' đã hoạt động trên Blockchain.`);
+                
+                btn.innerHTML = "✅ Đã đăng ký";
+                btn.style.background = "#28a745";
+
+            } catch (error) {
+                console.error("Lỗi đăng ký Blockchain:", error);
+                let errorMsg = "Lỗi không xác định";
+
+                if (error.message.includes("user rejected")) {
+                    errorMsg = "Bạn đã hủy giao dịch trên MetaMask.";
+                } else if (error.message.includes("execution reverted")) {
+                    errorMsg = "Giao dịch bị đảo ngược! Nguyên nhân phổ biến:\n1. Bạn không phải ví Admin.\n2. Cuộc bầu cử đã tồn tại.\n3. Ứng viên chưa được thêm vào Blockchain (addCandidate).";
+                } else {
+                    errorMsg = error.reason || error.message;
+                }
+
+                alert("❌ Lỗi: " + errorMsg);
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
         // Đọc thông báo từ container ẩn và hiển thị alert
         document.querySelectorAll('.flash-msg').forEach(el => {
             alert(el.getAttribute('data-message'));
         });
+
+        // Hàm xử lý UI khi chọn ứng viên
+        function toggleCandidate(label) {
+            const checkbox = label.querySelector('input[type="checkbox"]');
+            // Delay một chút để checkbox kịp đổi trạng thái trước khi toggle class
+            setTimeout(() => {
+                if (checkbox.checked) {
+                    label.classList.add('active');
+                } else {
+                    label.classList.remove('active');
+                }
+            }, 10);
+        }
     </script>
 </body>
 </html>

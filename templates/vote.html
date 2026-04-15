@@ -86,6 +86,14 @@
             font-size: 0.83em;
             font-weight: 600;
             backdrop-filter: blur(8px);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .wallet-badge:hover {
+            background: rgba(246, 133, 27, 0.3);
+            border-color: rgba(246, 133, 27, 0.8);
+            transform: translateY(-2px);
         }
 
         .wallet-dot {
@@ -487,7 +495,7 @@
     </style>
 </head>
 
-<body>
+<body data-votecode="{{ votecode }}">
 
     <!-- Transaction Overlay -->
     <div id="txOverlay">
@@ -505,7 +513,7 @@
 
     <!-- Top-right: Wallet info + Logout -->
     <div class="top-right-bar">
-        <div class="wallet-badge" id="walletBadge" style="display:none;">
+        <div class="wallet-badge" id="walletBadge" style="display:none;" onclick="viewAddressOnExplorer()" title="Xem lịch sử ví trên Cronos Explorer">
             <span class="wallet-dot"></span>
             <span id="walletAddrShort">🦊 Ví chưa kết nối</span>
         </div>
@@ -547,9 +555,13 @@
                     <div class="candidate-name">{{ c.Name }}</div>
                     <div class="candidate-desc">{{ c.Description if c.Description and c.Description != 'nan' else '' }}
                     </div>
-                    <button class="vote-button" id="btn-{{ loop.index }}" onclick="vote('{{ c.Name }}', this)">
+                    <button 
+    class="vote-button"
+    data-name="{{ c.Name }}"
+    data-index="{{ loop.index }}" 
+    {% if has_voted %}disabled{% endif %}>
                         <span class="btn-spinner" id="spinner-{{ loop.index }}"></span>
-                        <span class="btn-label">✓ Bỏ Phiếu</span>
+                        <span class="btn-label">{% if has_voted %}✅ Đã Bỏ Phiếu{% else %}✓ Bỏ Phiếu{% endif %}</span>
                     </button>
                 </div>
             </div>
@@ -575,6 +587,15 @@
         <div class="vote-footer">
             <a href="/result" class="secondary-btn">📊 Xem Kết Quả</a>
         </div>
+    </div>
+
+    <!-- Flash Messages Container -->
+    <div id="flash-container" style="display: none;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+                <span class="flash-msg" data-category="{{ category }}" data-message="{{ message }}"></span>
+            {% endfor %}
+        {% endwith %}
     </div>
 
     <!-- ethers.js -->
@@ -620,10 +641,22 @@
 
         // ===================== METAMASK =====================
 
+        // Hàm xem lịch sử giao dịch của ví hiện tại trên Cronos Explorer
+        async function viewAddressOnExplorer() {
+            if (!window.ethereum) return;
+            try {
+                const provider = new ethers.BrowserProvider(window.ethereum);
+                const accounts = await provider.listAccounts();
+                if (accounts.length === 0) return;
+                const address = await accounts[0].getAddress();
+                window.open(`https://explorer.cronos.org/testnet/address/${address}`, '_blank');
+            } catch (e) { console.error(e); }
+        }
+
         // ===================== CONFIG =====================
         // Đặt CONTRACT_ADDRESS = "" nếu chưa deploy contract
         // hoặc điền địa chỉ contract đã deploy lên mạng đang dùng
-        const CONTRACT_ADDRESS = "0x1070A5c5219a0E9b6B0cc6374400F22411AF956e"; 
+        const CONTRACT_ADDRESS = "0x848E1E6B7E8b195Cd9D43370550BE9F569E902e5"; 
         const CRONOS_TESTNET_CHAIN_ID = 338; // 0x152 — chỉ kiểm tra khi CONTRACT_ADDRESS có giá trị
 
         async function checkNetwork(provider) {
@@ -635,7 +668,7 @@
         async function isContract(provider, address) {
             try {
                 const code = await provider.getCode(address);
-                return code && code !== '0x' && code !== '0x0';
+                return code !== '0x' && code !== '0x0';
             } catch (e) {
                 return false;
             }
@@ -696,7 +729,7 @@
 
         // ===================== VOTE =====================
 
-        async function vote(candidate, btn) {
+        async function vote(candidate, btn, candidateIndex) {
             if (!window.ethereum) {
                 showToast('❌ Chưa cài MetaMask!', 'error');
                 return;
@@ -725,15 +758,12 @@
                 // ── Chế độ Smart Contract ──────────────────────────────────
                 // Nếu CONTRACT_ADDRESS được cấu hình, kiểm tra xem nó có tồn tại trên mạng không
                 let useContract = false;
+                // Cố gắng sử dụng Blockchain nếu CONTRACT_ADDRESS được khai báo
                 if (CONTRACT_ADDRESS && CONTRACT_ADDRESS.length === 42) {
-                    setTxOverlay(true, 'Đang kiểm tra Smart Contract...<br><small style="opacity:0.7;">Vui lòng chờ</small>');
-                    const contractExists = await isContract(provider, CONTRACT_ADDRESS);
-                    if (contractExists) {
-                        useContract = true;
-                        console.log('✅ Tìm thấy Smart Contract tại:', CONTRACT_ADDRESS);
-                    } else {
-                        console.warn('⚠️ Không tìm thấy Smart Contract tại:', CONTRACT_ADDRESS, '→ Chuyển sang chế độ Backend');
-                    }
+                    useContract = true;
+                    console.log('✅ Chế độ Blockchain được kích hoạt cho:', CONTRACT_ADDRESS);
+                } else {
+                    console.warn('⚠️ Không tìm thấy cấu hình Smart Contract -> Chế độ Backend');
                 }
 
                 if (useContract) {
@@ -750,35 +780,415 @@
                     }
 
                     const abi = [
-                        {
-                            "inputs": [{ "internalType": "string", "name": "name", "type": "string" }],
-                            "name": "vote",
-                            "outputs": [],
-                            "stateMutability": "nonpayable",
-                            "type": "function"
-                        },
-                        {
-                            "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
-                            "name": "hasVoted",
-                            "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-                            "stateMutability": "view",
-                            "type": "function"
-                        }
-                    ];
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_imageUrl",
+        "type": "string"
+      }
+    ],
+    "name": "addCandidate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_code",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "_candidateIds",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "createElection",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "candidateId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "name": "CandidateAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "electionCode",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      }
+    ],
+    "name": "ElectionCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "electionCode",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "status",
+        "type": "bool"
+      }
+    ],
+    "name": "ElectionStatusChanged",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_code",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bool",
+        "name": "_status",
+        "type": "bool"
+      }
+    ],
+    "name": "toggleElectionStatus",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_code",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_candidateId",
+        "type": "uint256"
+      }
+    ],
+    "name": "vote",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "electionCode",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "voter",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "candidateId",
+        "type": "uint256"
+      }
+    ],
+    "name": "Voted",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "candidates",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "imageUrl",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_id",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCandidate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_code",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_candidateId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCandidateVoteCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_code",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getElectionDetails",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      },
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_code",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "_user",
+        "type": "address"
+      }
+    ],
+    "name": "hasVotedInElection",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nextCandidateId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
 
                     const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer);
 
+                    // 1. Lấy và chuẩn hóa Votecode
+                    let vCode = `{{ votecode or '' }}`.trim();
+                    if (!vCode || vCode === "None" || vCode === "") {
+                        const bodyData = document.body.getAttribute('data-votecode');
+                        vCode = (bodyData && bodyData !== "None") ? bodyData : 
+                                (document.body.dataset.votecode || 
+                                "")
+                    }
+                    vCode = vCode.trim();
+
+                    if (!vCode || vCode === "" || vCode === "None") {
+                        setTxOverlay(false);
+                        showToast('❌ Lỗi: Không tìm thấy mã bầu cử (Votecode)!', 'error');
+                        setBtnLoading(btn, false);
+                        setAllBtnsDisabled(false);
+                        return;
+                    }
+
+                    const votecodeBytes32 = ethers.encodeBytes32String(vCode);
+                    setTxOverlay(true, `Đang kiểm tra mã '${vCode}' trên Blockchain...`);
+
+                    // 2. Kiểm tra sự tồn tại của Election trên Smart Contract
+                    try {
+                        const details = await contract.getElectionDetails(votecodeBytes32);
+                        const eName = details[0] ? details[0].toString().trim() : "";
+                        const eActive = details[1];
+                        
+                        if (!eName || eName === "") {
+                            setTxOverlay(false);
+                            showToast(`❌ Lỗi: Mã '${vCode}' chưa có trên Blockchain! <br><small>Bạn phải dùng ví Admin gọi hàm <b>createElection</b> cho mã này trước khi cho phép User vote.</small>`, 'error', 10000);
+                            setBtnLoading(btn, false);
+                            setAllBtnsDisabled(false);
+                            return;
+                        }
+                        
+                        const alreadyVoted = await contract.hasVotedInElection(votecodeBytes32, address);
+                        if (alreadyVoted) {
+                            setTxOverlay(false);
+                            showToast('⚠️ Bạn đã bỏ phiếu rồi! Mỗi ví chỉ được vote một lần trong cuộc bầu cử này.', 'warning', 7000);
+                            setBtnLoading(btn, false);
+                            setAllBtnsDisabled(false);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn("Election check failed:", e);
+                        // Nếu getElectionDetails revert, nghĩa là election chưa tồn tại
+                        setTxOverlay(false);
+                        showToast(`❌ Cuộc bầu cử '${vCode}' chưa được đăng ký trên Blockchain! <br><small>Vui lòng liên hệ Admin để thực hiện bước 'Đăng ký Blockchain'.</small>`, 'error', 8000);
+                        setBtnLoading(btn, false);
+                        setAllBtnsDisabled(false);
+                        return;
+                    }
+
                     setTxOverlay(true, 'Đang gửi giao dịch...<br><small style="opacity:0.7;">Vui lòng xác nhận trên MetaMask</small>');
 
-                    const tx = await contract.vote(candidate, { gasLimit: 300000 });
+                    // 3. Thực hiện giao dịch vote
+                    const tx = await contract.vote(votecodeBytes32, candidateIndex);
 
                     setTxOverlay(true, `Giao dịch đã gửi! ⏳<br><small style="opacity:0.7;">Đang chờ xác nhận...<br>${tx.hash.substring(0, 12)}...</small>`);
                     showToast('⏳ Giao dịch đã gửi, chờ xác nhận...', 'info', 10000);
 
                     const receipt = await tx.wait();
-                    setTxOverlay(false);
 
                     if (receipt.status === 1) {
+                        setTxOverlay(false);
                         // Ghi nhận vào server
                         try {
                             await fetch('/api/record_vote', {
@@ -797,17 +1207,29 @@
                         voteSuccess(candidate, btn, 'blockchain', receipt.hash || tx.hash);
                     } else {
                         setTxOverlay(false);
-                        showToast('❌ Giao dịch bị đảo ngược bởi Smart Contract!', 'error', 6000);
+                        console.error("Giao dịch thất bại:", receipt);
+                        // Cố gắng lấy nguyên nhân lỗi chi tiết
+                        let failReason = "Giao dịch bị đảo ngược!";
+                        try {
+                            await contract.vote.staticCall(votecodeBytes32, candidateIndex);
+                        } catch (revertErr) {
+                            if (revertErr.reason) failReason = "❌ " + revertErr.reason;
+                            else if (revertErr.message.includes("already voted")) failReason = "⚠️ Bạn đã bỏ phiếu rồi!";
+                            else if (revertErr.message.includes("Election not exist")) failReason = "❌ Cuộc bầu cử không tồn tại trên Smart Contract!";
+                        }
+
+                        showToast(failReason, 'error', 6000);
                         setBtnLoading(btn, false);
                         setAllBtnsDisabled(false);
                     }
 
                 } else {
                     // ── Chế độ Backend (Ký message + ghi server) ─────────
-                    setTxOverlay(true, 'Đang ký xác nhận vote...<br><small style="opacity:0.7;">Vui lòng xác nhận trên MetaMask</small>');
+                    setTxOverlay(true, 'Đang ký xác nhận...<br><small style="opacity:0.7;">Vui lòng xác nhận trên MetaMask</small>');
 
                     const timestamp = Date.now();
-                    const message = `Tôi bỏ phiếu cho: ${candidate}\nĐịa chỉ: ${address}\nThời gian: ${timestamp}`;
+                    const vCodeBack = document.body.getAttribute('data-votecode') || "DEFAULT";
+                    const message = `Tôi bỏ phiếu cho: ${candidate}\nCuộc bầu cử: ${vCodeBack}\nVí: ${address}\nTS: ${timestamp}`;
 
                     // Yêu cầu người dùng ký message bằng MetaMask
                     let signature;
@@ -910,14 +1332,17 @@
 
             const modeLabel = mode === 'blockchain' ? '⛓️ Blockchain' : '🖊️ Chữ ký điện tử';
             let txLink = "";
+            let addrLink = "";
             
             // Nếu là giao dịch blockchain thực (không phải chữ ký offline), hiển thị link Explorer
             if (txHash && !txHash.startsWith('sig:')) {
-                txLink = `<br><a href="https://explorer.cronos.org/testnet/tx/${txHash}" target="_blank" style="color:#fff;text-decoration:underline;font-size:0.9em;">🔍 Xem giao dịch trên Explorer</a>`;
+                txLink = `<br><a href="https://explorer.cronos.org/testnet/tx/${txHash}" target="_blank" style="color:#fff;text-decoration:underline;font-size:0.85em;">🔗 Xem Giao dịch của bạn</a>`;
             }
+            
+            addrLink = `<br><a href="javascript:void(0)" onclick="viewAddressOnExplorer()" style="color:#fff;text-decoration:underline;font-size:0.85em;">👤 Kiểm tra lịch sử Ví</a>`;
 
             showToast(
-                `✅ Vote thành công cho <strong>${candidate}</strong>! (${modeLabel})${txLink}<br>` +
+                `✅ Vote thành công cho <strong>${candidate}</strong>! (${modeLabel})${txLink}${addrLink}<br>` +
                 `<a href="/result" style="color:#fff;text-decoration:underline;font-size:0.9em;">📊 Xem kết quả ngay →</a>`,
                 'success', 8000
             );
@@ -935,7 +1360,20 @@
         }
 
         // Khởi tạo UI khi trang load
-        document.addEventListener('DOMContentLoaded', updateWalletUI);
+        document.addEventListener('DOMContentLoaded', () => {
+            updateWalletUI();
+            // Hiển thị các thông báo flash từ server
+            document.querySelectorAll('.flash-msg').forEach(el => {
+                showToast(el.getAttribute('data-message'), el.getAttribute('data-category'));
+            });
+        });
+        document.querySelectorAll('.vote-button').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const name = this.dataset.name;
+        const index = parseInt(this.dataset.index);
+        vote(name, this, index);
+    });
+});
     </script>
 
 </body>
